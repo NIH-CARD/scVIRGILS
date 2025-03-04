@@ -6,6 +6,14 @@ fastqs --> Align -- BAM (cellranger) --> Remove doublets --> unfiltered h5ad -->
 
 ## Required Input
 
-- Metadata
+Metadata file in .csv format, example in input/example_metadata.csv. A minimal metadata file should include:
+
+- 
+
+
+
+
+
+
 - Fastq files
 - Marker genes
