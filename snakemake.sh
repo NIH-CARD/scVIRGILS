@@ -18,6 +18,7 @@ module load snakemake/7.7.0
 git clone https://github.com/NIH-HPC/snakemake_profile.git
 
 # Pull the containers
+mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
 apptainer pull envs/single_cell_cpu.sif oras://quay.io/adamcatchingdti/single_cell_cpu
 
 # Load singularity
