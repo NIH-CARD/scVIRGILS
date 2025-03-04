@@ -27,4 +27,4 @@ module load singularity/4.1.5
 . /usr/local/current/singularity/app_conf/sing_binds
 
 # RUN SCRIPT
-snakemake --cores all --profile snakemake_profile --use-singularity --use_snakefile snakefile_scRNAtranscriptomics
+snakemake --cores all --profile snakemake_profile --use-singularity
