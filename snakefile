@@ -28,7 +28,7 @@ rule annotate:
     input:
         sc_anndata = data_dir+'li_filtered.h5ad'
     output:
-        sc_annotated_h5ad = data_dir+'li_annotated.h5ad'
+        sc_annotated_h5ad = data_dir+'li_annotated.h5ad',
         sc_annotated_plot = data_dir+'umap_cell_type.png'
     singularity:
         envs['single_cell_transcriptomics']
