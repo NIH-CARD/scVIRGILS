@@ -1,0 +1,34 @@
+﻿0gene_name,cell_type
+GRIN1,Neuron
+GRIN2A,Neuron
+GAD2,Neuron
+NEUROD6,Neuron
+THEMIS,Neuron
+COL5A3,Astrocyte
+GFAP,Astrocyte
+SLC1A2,Astrocyte
+AQP4,Astrocyte
+PDGFRB,Astrocyte
+CLDN11,Oligodendrocyte
+MOBP,Oligodendrocyte
+ST18,Oligodendrocyte
+MOG,Oligodendrocyte
+LHFPL3,Oligodendrocyte precursor
+MEGF11,Oligodendrocyte precursor
+PCDH15,Oligodendrocyte precursor
+VCAN,Oligodendrocyte precursor
+PTPRC,Immune cell
+CSF1R,Immune cell
+CD4,Immune cell
+ITGAM,Immune cell
+P2RY12,Immune cell
+MS4A1,Immune cell
+CD8B,Immune cell
+CD19,Immune cell
+VCAM1,Brain Vascular Cell
+CD34,Brain Vascular Cell
+FLT1,Brain Vascular Cell
+NOS3,Brain Vascular Cell
+LCN6,Brain Vascular Cell
+ANPEP,Brain Vascular Cell
+FOXC1,Brain Vascular Cell
