@@ -14,7 +14,11 @@ Metadata file in .csv format, example in input/example_metadata.csv. A minimal m
 
 - 
 - Fastq files
-- Marker genes
+
+Marker genes file in .csv format, example in input/example_marker_genes.csv. A minimal marker gene file sould include:
+
+- gene_name
+- cell_type
 
 
 Once set up, this complete pipeline can be run with `bash snakemake.sh` in terminal. **Note: This can only be run with an interactive or slurm job.**
