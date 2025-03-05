@@ -26,7 +26,9 @@ envs = {
 
 rule annotate:
     input:
-        sc_anndata = data_dir+'li_filtered.h5ad'
+        sc_anndata = data_dir+'li_filtered.h5ad',
+        sc_marker_genes = work_dir+'input/example_marker_genes.csv'
+
     output:
         sc_annotated_h5ad = work_dir+'/output/li_annotated.h5ad',
         sc_annotated_plot = work_dir+'/output/umap_cell_type.png'
