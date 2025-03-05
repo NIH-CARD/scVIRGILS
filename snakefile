@@ -6,7 +6,7 @@ import os
 """========================================================================="""
 
 # Define the data directory, explicitly -- Using Li et al. frontal cortex as a dummy dataset
-data_dir = '/data/CARD_MPU/ftd-ad-atlas/datasets/li_2023/objects/'
+data_dir = '/data/CARD_MPU/ftd-ad-atlas/datasets/li_2023/objects/' # may have to 
 # Define the working directory, explictly as the directory of this pipeline
 work_dir = os.getcwd()
 
@@ -20,7 +20,7 @@ num_workers = 8
 
 # Singularity containers to be downloaded from Quay.io, done in snakemake.sh
 envs = {
-    'single_cell_transcriptomics': 'envs/single_cell_cpu.sif'
+    'single_cell_transcriptomics': 'envs/single_cell_basic.sif'
     }
 
 
