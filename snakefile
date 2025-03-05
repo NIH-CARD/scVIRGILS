@@ -13,6 +13,10 @@ work_dir = os.getcwd()
 # Number of threads to use when running the rules
 num_workers = 8
 
+# Define where the metadata data exists for each sample to be processed
+metadata_table = work_dir+'/input/example_metadata.csv'
+# Define where celltypes/cell marker gene 
+gene_markers_file = work_dir+'/input/example_marker_genes.csv'
 
 """========================================================================="""
 """                                  Workflow                               """
@@ -26,13 +30,14 @@ envs = {
 
 rule annotate:
     input:
-        sc_anndata = data_dir+'li_filtered.h5ad',
-        sc_marker_genes = work_dir+'input/example_marker_genes.csv'
-
+        merged_rna_anndata = data_dir+'li_filtered.h5ad',
+        gene_markers = gene_markers_file
     output:
-        sc_annotated_h5ad = work_dir+'/output/li_annotated.h5ad',
-        sc_annotated_plot = work_dir+'/output/umap_cell_type.png'
+        merged_rna_anndata = work_dir+'/output/li_annotated.h5ad',
+        cell_annotate = work_dir+'/output/rna_cell_annot.csv'
     singularity:
         envs['single_cell_transcriptomics']
+    resources:
+        runtime=240, mem_mb=500000, slurm_partition='largemem'
     script:
-        work_dir+'/scripts/cell_annotation_clustering.py'
+        'scripts/annotate.py'
