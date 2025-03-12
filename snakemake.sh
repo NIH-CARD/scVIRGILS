@@ -1,25 +1,24 @@
 #!/bin/bash
-#SBATCH --job-name=first_annotation
-#SBATCH --output=/data/CARD_MPU/users/trujilloae/CARD_unified_workflow/annotation.txt
-#SBATCH --error=/data/CARD_MPU/users/trujilloae/CARD_unified_workflow/annotation.log
-#SBATCH --ntasks=1               # Number of tasks
-#SBATCH --cpus-per-task=6        # Number of threads
-#SBATCH --mem=2000GB                 # Memory per node
-#SBATCH --partition=largemem
-#SBATCH --time=48:00:00          # Time limit hrs:min:sec
 
+#SBATCH --cpus-per-task 1
+#SBATCH --mem-per-cpu=32G
+#SBATCH --time 24:00:00
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:v100x:2
+#SBATCH --array=0-6
 
 
 module purge
 module load apptainer
 module load snakemake/7.7.0
+module load cuda/
 
 # Pull profile, this will only run once, and is required for running on Biowulf
 git clone https://github.com/NIH-HPC/snakemake_profile.git
 
 # Pull the containers
-mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
-apptainer pull envs/single_cell_basic.sif oras://quay.io/ambertrujillo/single_cell_basic:1.0
+#mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
+apptainer pull envs/single_cell_cpu.sif oras://quay.io/adamcatchingdti/single_cell_cpu:02
 
 # Load singularity
 module load singularity/4.1.5
@@ -28,4 +27,4 @@ module load singularity/4.1.5
 . /usr/local/current/singularity/app_conf/sing_binds
 
 # RUN SCRIPT
-snakemake --cores all --profile snakemake_profile --use-singularity
+snakemake --cores all --profile snakemake_profile --use-singularity 

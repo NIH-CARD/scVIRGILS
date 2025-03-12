@@ -24,7 +24,7 @@ gene_markers_file = work_dir+'/input/example_marker_genes.csv'
 
 # Singularity containers to be downloaded from Quay.io, done in snakemake.sh
 envs = {
-    'single_cell_transcriptomics': 'envs/single_cell_basic.sif'
+    'single_cell_transcriptomics': 'envs/single_cell_cpu.sif'
     }
 
 
