@@ -1,0 +1,7 @@
+study,preprocess_id,participant_id,sex,primary_dx,genetic_level_condition,neuropathology_level_condition,path_PMI_hours,age_at_onset,age_at_death,genotype,race,disease_duration,snRNAseq,Mayo patient,family history,motor impairments,parkinsonism,psychiatric symptoms,apathy,disinhibition,personality changes,memory impairment,language impairment,dementia,Used in snATAC-seq,Used in FANS bulk RNA-Seq,Used in Western Blot,Used in H3K27ac ChIP-seq
+li_2023,snRNA_C9ALS_A1_FrontalCortex,A1,M,control,control,control,22,70,72.45,C9ORF72+,Caucasian,2.45,YES,1,0,1,0,0,0,0,0,0,0,0,YES,YES,YES,NO
+li_2023,snRNA_C9ALS_A2_FrontalCortex,A2,F,control,control,control,16,64.77207392,66.33,C9ORF72+,Caucasian,1.55792608,YES,1,1,1,0,0,0,0,0,0,0,0,YES,YES,YES,YES
+li_2023,snRNA_C9ALS_A3_FrontalCortex,A3,F,control,control,control,48,68.70910335,71.82,C9ORF72+,Caucasian,3.110896646,YES,1,1,1,0,1,0,0,0,0,0,0,YES,YES,YES,NO
+li_2023,snRNA_C9FTD_F1_FrontalCortex,F1,F,FTD,FTD-C9,FTD-TDPunknown,16,44,56.22,C9ORF72+,Caucasian,12.22,YES,1,1,0,0,0,1,1,0,1,0,1,YES†*,YES,NO,NO
+li_2023,snRNA_C9FTD_F2_FrontalCortex,F2,F,FTD,FTD-C9,FTD-TDPunknown,NA,66.33954127,72.55,C9ORF72+,Caucasian,6.210458731,YES*,1,0,1,0,0,0,0,0,1,1,1,YES†*,YES,NO,NO
+li_2023,snRNA_C9FTD_F3_FrontalCortex,F3,M,FTD,FTD-C9,FTD-TDPunknown,NA,55,63.6,C9ORF72+,Caucasian,8.6,YES,1,1,0,0,0,1,0,0,1,0,1,YES,YES,NO,NO
