@@ -18,7 +18,7 @@ git clone https://github.com/NIH-HPC/snakemake_profile.git
 
 # Pull the containers
 mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
-apptainer pull envs/single_cell_cpu.sif oras://quay.io/ambertrujillo/single_cell_basic:1.1
+apptainer pull envs/single_cell_gpu.sif oras://quay.io/adamcatchingdti/single_cell_cpu:0.4
 
 # Load singularity
 module load singularity/4.1.5

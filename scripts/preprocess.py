@@ -55,7 +55,7 @@ sc.pp.log1p(adata)
 # Save the normalized-log data
 adata.layers['data']=adata.X.copy() 
 
-# Calculate cell cycle()
+# Calculate cell cycle() -- This is to account for genes that are attributed to cells that are in different stages of the cell cycle, e.g. metaphase...etc.
 cell_cycle_genes = [x.strip() for x in open('/data/CARD_singlecell/SN_atlas/input/lab_cell_cycle_genes.txt')]
 s_genes = cell_cycle_genes[:43]
 g2m_genes = cell_cycle_genes[43:]
