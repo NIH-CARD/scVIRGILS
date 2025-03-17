@@ -34,7 +34,7 @@ samples = pd.read_csv(metadata_table)[sample_key].tolist()
 
 # Singularity containers to be downloaded from Quay.io, done in snakemake.sh
 envs = {
-    'single_cell_transcriptomics': 'envs/single_cell_cpu.sif'
+    'single_cell_transcriptomics': 'envs/single_cell_gpu.sif'
     }
 
 rule all:
