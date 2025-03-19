@@ -58,7 +58,7 @@ rule preprocess:
         metadata_table=metadata_table,
         rna_anndata=lambda wildcards: data_dir+f'data/li_2023/CELLRANGER/{sample_map[wildcards.sample]}/filtered_feature_bc_matrix.h5'
     output:
-        rna_anndata = work_dir+'output/01_{sample}_anndata_object_rna.h5ad'
+        rna_anndata = work_dir+'/output/01_{sample}_anndata_object_rna.h5ad'
     singularity:
         envs['single_cell_transcriptomics']
     params:
