@@ -57,7 +57,7 @@ sc.pp.log1p(adata)
 adata.layers['data']=adata.X.copy() 
 
 # Calculate cell cycle() -- This is to account for genes that are attributed to cells that are in different stages of the cell cycle, e.g. metaphase...etc. This list is from https://www.science.org/doi/10.1126/science.aad0501
-cell_cycle_genes = [x.strip() for x in open('/input/lab_cell_cycle_genes.txt')]
+cell_cycle_genes = [x.strip() for x in open(snakemake.input.cell_cycle_genes)]
 s_genes = cell_cycle_genes[:43]
 g2m_genes = cell_cycle_genes[43:]
 try:

@@ -20,6 +20,8 @@ metadata_table = work_dir+'/input/example_metadata.csv'
 # Define where celltypes/cell marker gene information exists
 gene_markers_file = work_dir+'/input/example_marker_genes.csv'
 
+cell_cycle_genes = work_dir+'/input/lab_cell_cycle_genes.txt'
+
 # Keys for samples (used in aggregation)
 preprocess_key = 'preprocess_id'
 sample_key = 'participant_id'
@@ -56,6 +58,7 @@ rule all:
 rule preprocess:
     input:
         metadata_table=metadata_table,
+        cell_cycle_genes=cell_cycle_genes,
         rna_anndata=lambda wildcards: data_dir+f'data/li_2023/CELLRANGER/{sample_map[wildcards.sample]}/filtered_feature_bc_matrix.h5'
     output:
         rna_anndata = work_dir+'/output/01_{sample}_anndata_object_rna.h5ad'
