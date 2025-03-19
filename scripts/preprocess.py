@@ -18,7 +18,7 @@ metadata = samples[samples['participant_id'] == str(snakemake.params.sample)].il
 """Preprocess the RNA data"""
 
 # Read the single-cell data
-adata = sc.read_h5ad(snakemake.input.rna_anndata)
+adata = sc.read_10x_h5(snakemake.input.rna_anndata)
 
 # Ensure unique variable names (MUST BE DONE FIRST!)
 adata.var_names_make_unique()
