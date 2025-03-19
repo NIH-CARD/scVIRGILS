@@ -37,14 +37,14 @@ envs = {
     'single_cell_transcriptomics': 'envs/single_cell_gpu.sif'
     }
 
-rule all:
-    input:
-        rna_anndata=expand(
-            work_dir+'output/01_{samples}_anndata_object_rna.h5ad', 
-            zip,
-            preprocess_id=preprocess_id,
-            sample=samples
-            )
+#rule all:
+#    input:
+#        rna_anndata=expand(
+#            work_dir+'output/01_{samples}_anndata_object_rna.h5ad', 
+#            zip,
+#            preprocess_id=preprocess_id,
+#            sample=samples
+#            )
 
 
 rule preprocess:
