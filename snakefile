@@ -34,6 +34,7 @@ if preprocess_key not in df.columns or sample_key not in df.columns:
 
 preprocess_id = df[preprocess_key].tolist()
 samples = df[sample_key].tolist()
+sample_map = dict(zip(samples, preprocess_id))  # Map sample → preprocess_id
 
 """========================================================================="""
 """                                  Workflow                               """
@@ -49,14 +50,13 @@ rule all:
     input:
         rna_anndata=expand(
             work_dir+'output/01_{sample}_anndata_object_rna.h5ad', 
-            sample=samples,
-            preprocess=preprocess_id
+            sample=samples
         )
 
 rule preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = data_dir+'data/li_2023/CELLRANGER/{preprocess}/filtered_feature_bc_matrix.h5'
+        rna_anndata=lambda wildcards: data_dir+f'data/li_2023/CELLRANGER/{sample_map[wildcards.sample]}/filtered_feature_bc_matrix.h5'
     output:
         rna_anndata = work_dir+'output/01_{sample}_anndata_object_rna.h5ad'
     singularity:
