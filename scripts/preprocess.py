@@ -42,7 +42,7 @@ print(adata)
 
 # Add metadata to the AnnData object directly from the metadata dataframe
 #for key in metadata.to_dict():
-    adata.obs[key] = metadata[key]
+#    adata.obs[key] = metadata[key]
 
 # Normalize data
 #sc.pp.normalize_total(adata)
@@ -66,4 +66,4 @@ print(adata)
 #    print("can't map genes")
 
 # Save the AnnData object
-#adata.write(filename=snakemake.output.rna_anndata, compression='gzip')
+adata.write(filename=snakemake.output.rna_anndata, compression='gzip')
