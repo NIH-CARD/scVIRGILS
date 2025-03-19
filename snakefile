@@ -45,12 +45,12 @@ envs = {
 }
 
 # Uncomment and correct rule all
-# rule all:
-#     input:
-#         rna_anndata=expand(
-#             work_dir+'output/01_{sample}_anndata_object_rna.h5ad', 
-#             sample=samples
-#         )
+rule all:
+    input:
+        rna_anndata=expand(
+            work_dir+'output/01_{sample}_anndata_object_rna.h5ad', 
+            sample=samples
+        )
 
 rule preprocess:
     input:
