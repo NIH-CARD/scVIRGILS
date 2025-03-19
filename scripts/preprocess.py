@@ -33,7 +33,7 @@ adata.var['rb'] = adata.var_names.str.startswith(('RPL', 'RPS'))
 
 print(adata)
 # Calculate QC metrics
-#sc.pp.calculate_qc_metrics(adata, qc_vars=['rb', 'mt'], percent_top=None, log1p=False, inplace=True)
+sc.pp.calculate_qc_metrics(adata, qc_vars=['rb', 'mt'], percent_top=None, log1p=False, inplace=True)
 
 # Run scrublet to identify doublets
 #sc.external.pp.scrublet(adata, expected_doublet_rate=(adata.n_obs / 1000) * 0.008)
@@ -41,29 +41,29 @@ print(adata)
 #adata.obs['cell_barcode'] = adata.obs_names
 
 # Add metadata to the AnnData object directly from the metadata dataframe
-#for key in metadata.to_dict():
-#    adata.obs[key] = metadata[key]
+for key in metadata.to_dict():
+    adata.obs[key] = metadata[key]
 
 # Normalize data
-#sc.pp.normalize_total(adata)
+sc.pp.normalize_total(adata)
 
 # Save the CPM data
-#adata.layers['cpm']=adata.X.copy() 
+adata.layers['cpm']=adata.X.copy() 
 
 # Logarithmize the data
-#sc.pp.log1p(adata)
+sc.pp.log1p(adata)
 
 # Save the normalized-log data
-#adata.layers['data']=adata.X.copy() 
+adata.layers['data']=adata.X.copy() 
 
-# Calculate cell cycle() -- This is to account for genes that are attributed to cells that are in different stages of the cell cycle, e.g. metaphase...etc.
-#cell_cycle_genes = [x.strip() for x in open('/data/CARD_singlecell/SN_atlas/input/lab_cell_cycle_genes.txt')]
-#s_genes = cell_cycle_genes[:43]
-#g2m_genes = cell_cycle_genes[43:]
-#try:
-#    sc.tl.score_genes_cell_cycle(adata, s_genes=s_genes, g2m_genes=g2m_genes)
-#except:
-#    print("can't map genes")
+# Calculate cell cycle() -- This is to account for genes that are attributed to cells that are in different stages of the cell cycle, e.g. metaphase...etc. This list is from https://www.science.org/doi/10.1126/science.aad0501
+cell_cycle_genes = [x.strip() for x in open('/input/lab_cell_cycle_genes.txt')]
+s_genes = cell_cycle_genes[:43]
+g2m_genes = cell_cycle_genes[43:]
+try:
+    sc.tl.score_genes_cell_cycle(adata, s_genes=s_genes, g2m_genes=g2m_genes)
+except:
+    print("can't map genes")
 
 # Save the AnnData object
 adata.write(filename=snakemake.output.rna_anndata, compression='gzip')
