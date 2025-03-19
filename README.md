@@ -22,3 +22,11 @@ Marker genes file in .csv format, example in input/example_marker_genes.csv. A m
 
 
 Once set up, this complete pipeline can be run with `bash snakemake.sh` in terminal. **Note: This can only be run with an interactive or slurm job.**
+
+### RNA processing (rule preprocess)
+
+Transcriptomic data from CellRanger-ARC-2.0 ('''cellbender_gex_counts_filtered.h5''') is read in and processed with Scanpy. QC metrics of percent mitochondria/ribosomal RNA, doublet probability, and cell cycle.
+
+### Merge unfiltered adatas (rule merge_unfiltered)
+
+All individual .h5ad files created in rule preprocess are merged into a single .h5ad file. This step is necessary for examining QC parameters. 

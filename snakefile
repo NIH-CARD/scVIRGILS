@@ -50,6 +50,7 @@ envs = {
 # Uncomment and correct rule all
 rule all:
     input:
+        merged_rna_anndata_unfiltered = work_dir+'/output/01_merged_anndata_rna.h5ad',
         rna_anndata=expand(
             work_dir+'/output/01_{sample}_anndata_object_rna.h5ad', 
             sample=samples
@@ -79,7 +80,7 @@ rule merge_unfiltered:
             sample=samples
             )
     output:
-        merged_rna_anndata = work_dir+'/output/01_merged_anndata_rna.h5ad'
+        merged_rna_anndata_unfiltered = work_dir+'/output/01_merged_anndata_rna.h5ad'
     singularity:
         envs['single_cell_transcriptomics']
     params:
