@@ -49,7 +49,7 @@ envs = {
 rule all:
     input:
         rna_anndata=expand(
-            work_dir+'output/01_{sample}_anndata_object_rna.h5ad', 
+            work_dir+'/output/01_{sample}_anndata_object_rna.h5ad', 
             sample=samples
         )
 
