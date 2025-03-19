@@ -14,6 +14,6 @@ adata = ad.concat(
 
 # Write out the unfiltered dataset
 adata.write_h5ad(
-    filename=snakemake.output.merged_rna_anndata, 
+    filename=snakemake.output.merged_rna_anndata_unfiltered, 
     compression='gzip'
     )
