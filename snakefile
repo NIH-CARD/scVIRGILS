@@ -50,13 +50,13 @@ rule all:
         rna_anndata=expand(
             work_dir+'output/01_{sample}_anndata_object_rna.h5ad', 
             sample=samples,
-            preprocess_id=preprocess_id
+            preprocess=preprocess_id
         )
 
 rule preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = data_dir+'data/li_2023/CELLRANGER/{preprocess_id}/filtered_feature_bc_matrix.h5'
+        rna_anndata = data_dir+'data/li_2023/CELLRANGER/{preprocess}/filtered_feature_bc_matrix.h5'
     output:
         rna_anndata = work_dir+'output/01_{sample}_anndata_object_rna.h5ad'
     singularity:
