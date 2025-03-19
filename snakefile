@@ -70,3 +70,21 @@ rule preprocess:
         runtime=120, mem_mb=64000, disk_mb=10000, slurm_partition='quick' 
     script:
         work_dir+'/scripts/preprocess.py'
+
+rule merge_unfiltered:
+    input:
+        rna_anndata=expand(
+            work_dir+'/output/01_{sample}_anndata_object_rna.h5ad', 
+            zip,
+            sample=samples
+            )
+    output:
+        merged_rna_anndata = work_dir+'/output/01_merged_anndata_rna.h5ad'
+    singularity:
+        envs['single_cell_transcriptomics']
+    params:
+        samples=samples
+    resources:
+        runtime=240, mem_mb=1500000, disk_mb=10000, slurm_partition='largemem' 
+    script:
+        work_dir+'/scripts/merge_anndata.py'
