@@ -33,4 +33,4 @@ module load singularity/4.1.5
 . /usr/local/current/singularity/app_conf/sing_binds
 
 # RUN SCRIPT
-snakemake --cores all --profile snakemake_profile --use-singularity 
+snakemake --cores all --profile snakemake_profile --use-singularity -f plot_qc_rna
