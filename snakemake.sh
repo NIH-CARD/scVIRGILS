@@ -20,6 +20,9 @@ git clone https://github.com/NIH-HPC/snakemake_profile.git
 mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
 # Making output directory of output docs
 mkdir output/
+# Making directory for plots
+mkdir plots/
+
 apptainer pull envs/single_cell_gpu.sif oras://quay.io/adamcatchingdti/single_cell_gpu:0.8
 
 
