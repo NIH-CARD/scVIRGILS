@@ -94,7 +94,7 @@ rule plot_qc_rna:
     input:
         merged_rna_anndata_unfiltered = work_dir+'/output/01_merged_anndata_rna.h5ad'
     singularity:
-        envs['singlecell']
+        envs['single_cell_transcriptomics']
     resources:
         runtime=960, mem_mb=500000, disk_mb=10000, slurm_partition='largemem' 
     script:
