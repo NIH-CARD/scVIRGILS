@@ -21,7 +21,7 @@ mkdir envs/ # This empty directory is necessary for storing pulled singularity c
 # Making output directory of output docs
 mkdir output/
 # Making directory for plots
-mkdir plots/
+#mkdir plots/
 
 apptainer pull envs/single_cell_gpu.sif oras://quay.io/adamcatchingdti/single_cell_gpu:0.8
 
