@@ -27,6 +27,7 @@ sns.set_context('paper')
 
 # Save the AnnData object
 adata = sc.read_h5ad(snakemake.input.merged_rna_anndata_unfiltered) 
+adata.obs["sample"] = adata.obs["participant_id"]
 
 for sample in adata.obs['sample'].drop_duplicates().to_list():
 
