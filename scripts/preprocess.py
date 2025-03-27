@@ -26,6 +26,7 @@ adata.var_names_make_unique()
 # Make a raw counts layer
 adata.layers['counts'] = adata.X.copy()
 adata.raw = adata
+adata.obs["samle"] = adata.obs["participant_id"]
 
 # Add mitochondrial and ribosomal markers
 adata.var['mt'] = adata.var_names.str.startswith('MT-')
