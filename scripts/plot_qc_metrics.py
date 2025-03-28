@@ -27,6 +27,7 @@ sns.set_context('paper')
 # Load AnnData object
 adata = sc.read_h5ad(snakemake.input.merged_rna_anndata_unfiltered) 
 adata.obs["sample"] = adata.obs["participant_id"]
+sample = adata.obs["sample"]
 
 # Make plot directory
 try:
