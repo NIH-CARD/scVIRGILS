@@ -46,7 +46,7 @@ rule all:
 """genes_by_counts = work_dir+'figures/QC_genes_by_counts.png'"""
 # Uncomment when you have verified QC metrics
 """rna_anndata=expand(
-            data_dir+'/{sample}/03_{sample}_anndata_filtered_rna.h5ad', 
+            work_dir+'/{sample}/03_{sample}_anndata_filtered_rna.h5ad', 
             zip,
             batch=batches,
             sample=samples
