@@ -1,6 +1,7 @@
-Sample,Homogenizing_batch,Library_batch,Sequencing_batch,Repeated,Use_batch,Age,PMI,Ethnicity,Race,Brain_bank,Short Diagnosis,Sample,Sex,SampleID,Age_drop,Sex_drop,PMI_drop,Primary Diagnosis,Brain bank
-2543,2,2,0,0,0,50.5,14.5,Not Hispanic or Latino,Black or African-American,HBCC,Control,2543,Male,2543,50.5,Male,14.5,control,HBCC
-2587,9,8,1,0,1,50.6,25.5,Not Hispanic or Latino,Black or African-American,HBCC,Control,2587,Male,2587,50.6,Male,25.5,control,HBCC
-2287,11,9,1,0,1,50.9,50.5,Not Hispanic or Latino,Black or African-American,HBCC,Control,2287,Female,2287,50.9,Female,50.5,control,HBCC
-1424,15,12,2,0,2,51.6,58.0,Not Hispanic or Latino,Black or African-American,HBCC,Control,1424,Male,1424,51.6,Male,58,control,HBCC
-1431,5,5,0,1,0,51.7,43.5,Not Hispanic or Latino,Black or African-American,HBCC,Control,1431,Male,1431,51.7,Male,43.5,control,HBCC
+﻿Sample,Case_Year,Library_Batch,Case_Num,SampleID_Box,Region,Neuropath_Dx_1,Neuropath_Dx_2,Age,Sex,PMI,APoE,Clinical_Syndrome,Tangle_Stage,Plaque_Stage,Diagnosis,Plaques_Tangles,Braak___Braak_Stage,RIN,Assay,Total_cells_in_snRNA_seq,Genes_detected_in_snRNA_seq
+sample-27,2011,1,28,28-11,FC,Alzheimer's disease,Unused,81,M,2.87,e23,[Dem],Stage 6,Stage B,AD,NA,NA,8.8,both,3766,2867
+sample-50,2018,1,22,22-18,FC,Alzheimer's disease,Unused,89,F,4.08,e33,[Dem],Stage 6,Stage C,AD,NA,NA,8.3,both,2679,2627
+sample-46,2017,1,21,21-17,FC,Alzheimer's disease,Unused,90,M,4.23,e23,[Dem],Stage 5,Stage C,AD,NA,NA,7.9,both,3466,2472
+sample-66,2012,2,9,43355,FC,Normal (Mild Braak Changes),Unused,90,F,2.92,e33,[Norm],Stage 2,None,Control,NA,NA,10,both,2868,2432
+sample-52,2001,2,25,25-01,FC,Normal (Mild Braak Changes),Unused,83,M,1.8,e33,NA,Stage 2,None,Control,NA,NA,7.2,both,2911,1728
+sample-58,2008,2,18,18-08,FC,Normal (Mild Braak Changes),Unused,90,M,4,e33,[Norm],Stage 2,Stage B,Control,NA,NA,8.1,both,2806,2057
