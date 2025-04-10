@@ -65,7 +65,7 @@ rule cellbender:
         rna_anndata =data_dir+'/{sample}/raw_feature_bc_matrix.h5',
         cwd = data_dir+'/{sample}/'
     output:
-        rna_anndata = data_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
     params:
         sample='{sample}'
     resources:
@@ -76,9 +76,9 @@ rule cellbender:
 rule rna_preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = data_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
     output:
-        rna_anndata = data_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
+        rna_anndata = work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
     singularity:
         envs['singlecell']
     params:
@@ -92,7 +92,7 @@ rule rna_preprocess:
 rule merge_unfiltered:
     input:
         rna_anndata=expand(
-            data_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad', 
+            work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad', 
             zip,
             batch=batches,
             sample=samples
@@ -133,9 +133,9 @@ rule plot_qc_rna:
 
 rule filter_rna:
     input:        
-        rna_anndata = data_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
+        rna_anndata = work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
     output:
-        rna_anndata = data_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad'
+        rna_anndata = work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad'
     singularity:
         envs['singlecell']
     params:
@@ -151,7 +151,7 @@ rule filter_rna:
 rule merge_filtered_rna:
     input:
         rna_anndata=expand(
-            data_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
+            work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
             zip,
             batch=batches,
             sample=samples
