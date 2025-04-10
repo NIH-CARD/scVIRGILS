@@ -27,7 +27,7 @@ module load singularity/4.1.5
 # Update permissions on the bash scripts 
 chmod 777 scripts/rna_model.sh
 chmod 777 scripts/cellbender_array.sh
-chmod 777 scripts/atac_model.sh
+#chmod 777 scripts/atac_model.sh
 
 # RUN SCRIPT
 snakemake --cores all --profile snakemake_profile --use-singularity
