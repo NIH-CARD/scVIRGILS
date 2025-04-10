@@ -41,7 +41,7 @@ envs = {
 
 rule all:
     input:
-        genes_by_counts = work_dir+'figures/QC_genes_by_counts.png
+        genes_by_counts = work_dir+'figures/QC_genes_by_counts.png'
 # Uncomment to view QC data
 """genes_by_counts = work_dir+'figures/QC_genes_by_counts.png'"""
 # Uncomment when you have verified QC metrics
