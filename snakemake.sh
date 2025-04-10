@@ -2,29 +2,21 @@
 
 #SBATCH --cpus-per-task 1
 #SBATCH --mem-per-cpu=32G
-#SBATCH --time 24:00:00
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:v100x:2
-#SBATCH --array=0-6
+#SBATCH --time 96:00:00
 
 
 module purge
 module load apptainer
 module load snakemake/7.7.0
-module load CUDA
 
 # Pull profile, this will only run once, and is required for running on Biowulf
 git clone https://github.com/NIH-HPC/snakemake_profile.git
 
 # Pull the containers
-mkdir envs/ # This empty directory is necessary for storing pulled singularity containers
-# Making output directory of output docs
-mkdir output/
-# Making directory for plots
-#mkdir plots/
+apptainer pull --disable-cache envs/single_cell_gpu.sif oras://quay.io/adamcatchingdti/single_cell_gpu:0.8
+apptainer pull --disable-cache envs/decoupler.sif oras://quay.io/adamcatchingdti/decoupler.sif:0.8
 
-apptainer pull envs/single_cell_gpu.sif oras://quay.io/adamcatchingdti/single_cell_gpu:0.8
-
+apptainer pull --disable-cache envs/scenicplus.sif docker://litd/docker-scenicplus:latest 
 
 # Load singularity
 module load singularity/4.1.5
@@ -32,5 +24,10 @@ module load singularity/4.1.5
 # Bind external directories on Biowulf
 . /usr/local/current/singularity/app_conf/sing_binds
 
+# Update permissions on the bash scripts 
+chmod 777 scripts/rna_model.sh
+chmod 777 scripts/cellbender_array.sh
+chmod 777 scripts/atac_model.sh
+
 # RUN SCRIPT
-snakemake --cores all --profile snakemake_profile --use-singularity 
+snakemake --cores all --profile snakemake_profile --use-singularity

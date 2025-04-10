@@ -1,0 +1,31 @@
+Bootstrap: docker
+From: condaforge/miniforge3
+
+%environment
+    export ENVNAME="single_cell_basic"
+    export PATH="/opt/conda/envs/${ENVNAME}/bin:$PATH"
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate ${ENVNAME}
+
+%post
+    # Ensure latest package lists
+    apt-get update && apt-get install -y bash
+
+    # Create a conda environmnet
+    ENVNAME="single_cell_basic"
+    mamba create -y -n ${ENVNAME} \
+    && conda clean -afy
+
+    # Ensure Conda is properly initialized
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate ${ENVNAME}
+    #conda install scanpy pandas anndata numpy decoupler
+    pip install scvi-tools scanpy pandas anndata numpy decoupler
+
+    # Ensure environment activation in all shells
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> /etc/profile.d/conda.sh
+    echo "conda activate ${ENVNAME}" >> /etc/profile.d/conda.sh
+
+%runscript
+    exec /bin/bash "$@"
+
