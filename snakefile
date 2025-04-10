@@ -60,7 +60,8 @@ rule all:
     disease = diseases
     )
 """
-rule cellbender:
+# Uncomment when you wnat to run cellbender
+"""rule cellbender:
     input:
         rna_anndata =data_dir+'/{sample}/raw_feature_bc_matrix.h5',
         cwd = data_dir+'/{sample}/'
@@ -72,11 +73,12 @@ rule cellbender:
         runtime=2880, mem_mb=300000, gpu=1, gpu_model='v100x'
     shell:
         work_dir+'/scripts/cellbender_array.sh {input.rna_anndata} {input.cwd} {output.rna_anndata}'
+"""
 
 rule rna_preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata = data_dir+'/{sample}/filtered_feature_bc_matrix.h5'
     output:
         rna_anndata = work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
     singularity:
