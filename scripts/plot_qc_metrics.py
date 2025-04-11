@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import scanpy as sc
 import numpy as np
+import anndata as ad
 
 # Keep consistent font sizes
 
