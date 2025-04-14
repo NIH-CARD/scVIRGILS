@@ -19,7 +19,7 @@ apptainer pull --disable-cache envs/decoupler.sif oras://quay.io/adamcatchingdti
 apptainer pull --disable-cache envs/scenicplus.sif docker://litd/docker-scenicplus:latest 
 
 # Load singularity
-module load singularity/4.1.5
+module load singularity/4.2.2
 
 # Bind external directories on Biowulf
 . /usr/local/current/singularity/app_conf/sing_binds
