@@ -146,7 +146,7 @@ for sample in adata.obs[sample_key].drop_duplicates().to_list():
 
     # Histogram
     y, x, _ = ax[1].hist(
-        filtered_adata, 
+        filtered_adata.obs['doublet_score'], 
         bins=int(filtered_adata.n_obs))
     ax[1].plot([snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
     ax[1].set_ylim(0, y.max())
@@ -208,7 +208,7 @@ plt.savefig(snakemake.output.gene_counts_figure, dpi=300)
 
 # Doublet QC
 y, x, _ = sns.hist(
-        doublet_adata, 
+        doublet_adata.obs['doublet_score'], 
         bins=int(doublet_adata.n_obs))
 plt.plot([snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
 plt.ylim(0, y.max())
