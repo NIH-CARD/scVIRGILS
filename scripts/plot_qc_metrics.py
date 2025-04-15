@@ -169,25 +169,33 @@ for sample in adata.obs[sample_key].drop_duplicates().to_list():
 # Plot summary mitochondria, ribosome, and scrublet scores
 
 # Mitochondria QC
-y, x, _ = sns.histplot(
-    adata.obs['pct_counts_mt'], 
-    bins=int(np.sqrt(adata.n_obs))
+ax = sns.histplot(
+        adata.obs['pct_counts_mt'], 
+        bins=int(np.sqrt(adata.n_obs))
     )
+# Get y-axis max from the current Axes
+ymax = ax.get_ylim()[1]
+
+plt.plot(
+    [snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], [1, ymax], '--r')
+plt.ylim(0, ymax)
 plt.yscale("log")
 plt.xlabel('percent')
 plt.ylabel('number of cells')
-plt.plot([snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], [1, y.max()], '--r')
-plt.ylim(0, y.max())
 plt.title('Percent mitochondria per cell')
 plt.savefig(snakemake.output.mito_figure, dpi=300)
 
 # Ribosome QC
-y, x, _ = sns.histplot(
+ax = sns.histplot(
         adata.obs['pct_counts_rb'], 
         bins=int(np.sqrt(adata.n_obs))
         )
-plt.plot([snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], [1, y.max()], '--r')
-plt.ylim(0, y.max())
+# Get y-axis max from the current Axes
+ymax = ax.get_ylim()[1]
+
+plt.plot(
+    [snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], [1, y.max()], '--r')
+plt.ylim(0, ymax)
 plt.yscale("log")
 plt.xlabel('percent')
 plt.ylabel('number of cells')
@@ -195,23 +203,31 @@ plt.title('Percent ribosome genes per cell')
 plt.savefig(snakemake.output.ribo_figure, dpi=300)
 
 # Number of genes
-y, x, _ = sns.histplot(
+ax = sns.histplot(
         adata.obs['n_genes_by_counts'], 
         bins=int(np.sqrt(adata.n_obs))
         )
-plt.plot([snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], [1, y.max()], '--r')
-plt.ylim(0, y.max())
+# Get y-axis max from the current Axes
+ymax = ax.get_ylim()[1]
+
+plt.plot(
+    [snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], [1, y.max()], '--r')
+plt.ylim(0, ymax)
 plt.xlabel('total counts')
 plt.ylabel('number of cells')
 plt.title('Number of genes per cell')
 plt.savefig(snakemake.output.gene_counts_figure, dpi=300)
 
 # Doublet QC
-y, x, _ = sns.histplot(
+ax = sns.histplot(
         doublet_adata.obs['doublet_score'], 
         bins=int(doublet_adata.n_obs))
-plt.plot([snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
-plt.ylim(0, y.max())
+# Get y-axis max from the current Axes
+ymax = ax.get_ylim()[1]
+
+plt.plot(
+    [snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
+plt.ylim(0, ymax)
 plt.xlabel('droplet score')
 plt.ylabel('number of droplets')
 plt.title('Doublet score per cell')

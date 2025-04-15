@@ -118,7 +118,7 @@ rule plot_qc_rna:
         ribo_figure = work_dir+'/figures/QC_ribo_pct.png',
         gene_counts_figure = work_dir+'/figures/QC_gene_counts.png',
         doublet_figure = work_dir+'/figures/QC_doublet.png',
-        genes_by_counts = work_dir+'figures/QC_genes_by_counts.png'
+        genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'
     singularity:
         envs['singlecell']
     resources:
