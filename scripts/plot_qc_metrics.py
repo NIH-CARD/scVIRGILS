@@ -170,7 +170,7 @@ for sample in adata.obs[sample_key].drop_duplicates().to_list():
 
 # Mitochondria QC
 y, x, _ = sns.histplot(
-    adata.obs.obs['pct_counts_mt'], 
+    adata.obs['pct_counts_mt'], 
     bins=int(np.sqrt(adata.n_obs))
     )
 plt.yscale("log")
