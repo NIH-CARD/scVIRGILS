@@ -60,7 +60,7 @@ rule all:
     disease = diseases
     )
 """
-# Uncomment when you wnat to run cellbender
+# Uncomment when you want to run cellbender
 """rule cellbender:
     input:
         rna_anndata =data_dir+'/{sample}/raw_feature_bc_matrix.h5',

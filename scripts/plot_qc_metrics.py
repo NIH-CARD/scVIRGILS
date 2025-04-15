@@ -176,14 +176,14 @@ ax = sns.histplot(
 # Get y-axis max from the current Axes
 ymax = ax.get_ylim()[1]
 
-plt.plot(
+ax.plot(
     [snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], [1, ymax], '--r')
-plt.ylim(0, ymax)
-plt.yscale("log")
-plt.xlabel('percent')
-plt.ylabel('number of cells')
-plt.title('Percent mitochondria per cell')
-plt.savefig(snakemake.output.mito_figure, dpi=300)
+ax.ylim(0, ymax)
+ax.yscale("log")
+ax.xlabel('percent')
+ax.ylabel('number of cells')
+ax.title('Percent mitochondria per cell')
+ax.savefig(snakemake.output.mito_figure, dpi=300)
 
 # Ribosome QC
 ax = sns.histplot(
@@ -193,14 +193,14 @@ ax = sns.histplot(
 # Get y-axis max from the current Axes
 ymax = ax.get_ylim()[1]
 
-plt.plot(
+ax.plot(
     [snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], [1, y.max()], '--r')
-plt.ylim(0, ymax)
-plt.yscale("log")
-plt.xlabel('percent')
-plt.ylabel('number of cells')
-plt.title('Percent ribosome genes per cell')
-plt.savefig(snakemake.output.ribo_figure, dpi=300)
+ax.ylim(0, ymax)
+ax.yscale("log")
+ax.xlabel('percent')
+ax.ylabel('number of cells')
+ax.title('Percent ribosome genes per cell')
+ax.savefig(snakemake.output.ribo_figure, dpi=300)
 
 # Number of genes
 ax = sns.histplot(
@@ -210,13 +210,13 @@ ax = sns.histplot(
 # Get y-axis max from the current Axes
 ymax = ax.get_ylim()[1]
 
-plt.plot(
+ax.plot(
     [snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], [1, y.max()], '--r')
-plt.ylim(0, ymax)
-plt.xlabel('total counts')
-plt.ylabel('number of cells')
-plt.title('Number of genes per cell')
-plt.savefig(snakemake.output.gene_counts_figure, dpi=300)
+ax.ylim(0, ymax)
+ax.xlabel('total counts')
+ax.ylabel('number of cells')
+ax.title('Number of genes per cell')
+ax.savefig(snakemake.output.gene_counts_figure, dpi=300)
 
 # Doublet QC
 ax = sns.histplot(
@@ -225,13 +225,13 @@ ax = sns.histplot(
 # Get y-axis max from the current Axes
 ymax = ax.get_ylim()[1]
 
-plt.plot(
+ax.plot(
     [snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
-plt.ylim(0, ymax)
-plt.xlabel('droplet score')
-plt.ylabel('number of droplets')
-plt.title('Doublet score per cell')
-plt.savefig(snakemake.output.doublet_figure, dpi=300)
+ax.ylim(0, ymax)
+ax.xlabel('droplet score')
+ax.ylabel('number of droplets')
+ax.title('Doublet score per cell')
+ax.savefig(snakemake.output.doublet_figure, dpi=300)
 
 # Genes by total counts
 sc.pl.scatter(
