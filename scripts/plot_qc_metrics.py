@@ -170,100 +170,98 @@ for sample in adata.obs[sample_key].drop_duplicates().to_list():
 
 # Mitochondria QC
 fig, ax = plt.subplots(1, 2, figsize=(10, 4), sharey=False)
-    fig.suptitle(f' Mitochondria QC', fontsize=BIGGER_SIZE)
+fig.suptitle(f' Mitochondria QC', fontsize=BIGGER_SIZE)
 
-    # Violin plot in the first panel
-    sc.pl.violin(adata, ['pct_counts_mt'], jitter=0.5, ax=ax[0], show=False)
-    ax[0].set_ylabel('percent')
-    ax[0].set_xticks('')
-    ax[0].set_xlim(-.75, .75)
-    ax[0].plot([-.5, .5], [snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], '--r')
-    ax[0].set_title('Percent mitochondria per cell')
+# Violin plot in the first panel
+sc.pl.violin(adata, ['pct_counts_mt'], jitter=0.5, ax=ax[0], show=False)
+ax[0].set_ylabel('percent')
+ax[0].set_xticks('')
+ax[0].set_xlim(-.75, .75)
+ax[0].plot([-.5, .5], [snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], '--r')
+ax[0].set_title('Percent mitochondria per cell')
 
-    # Histogram of values in the second panel
-    y, x, _ = ax[1].hist(
-        adata.obs['pct_counts_mt'], 
-        bins=int(np.sqrt(adata.n_obs))
-        )
-    ax[1].set_yscale("log")
-    ax[1].set_xlabel('percent')
-    ax[1].set_ylabel('number of cells')
-    ax[1].plot([snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], [1, y.max()], '--r')
-    ax[1].set_ylim(0, y.max())
-    ax[1].set_title('Percent mitochondria per cell')
-    plt.savefig(snakemake.output.mito_figure, dpi=300)
+# Histogram of values in the second panel
+y, x, _ = ax[1].hist(
+    adata.obs['pct_counts_mt'], 
+    bins=int(np.sqrt(adata.n_obs))
+    )
+ax[1].set_yscale("log")
+ax[1].set_xlabel('percent')
+ax[1].set_ylabel('number of cells')
+ax[1].plot([snakemake.params.mito_percent_thresh, snakemake.params.mito_percent_thresh], [1, y.max()], '--r')
+ax[1].set_ylim(0, y.max())
+ax[1].set_title('Percent mitochondria per cell')
+plt.savefig(snakemake.output.mito_figure, dpi=300)
 
 # Ribosome QC
 fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-    fig.suptitle(f' Ribosome QC', fontsize=BIGGER_SIZE)
+fig.suptitle(f' Ribosome QC', fontsize=BIGGER_SIZE)
 
-    # Violin plot in the first panel
-    sc.pl.violin(adata, ['pct_counts_rb'], jitter=0.5, ax=ax[0], show=False)
-    ax[0].set_ylabel('percent')
-    ax[0].set_xlim(-.75, .75)
-    ax[0].plot([-.5, .5], [snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], '--r')
-    ax[0].set_title('Percent ribosome genes per cell')
+# Violin plot in the first panel
+sc.pl.violin(adata, ['pct_counts_rb'], jitter=0.5, ax=ax[0], show=False)
+ax[0].set_ylabel('percent')
+ax[0].set_xlim(-.75, .75)
+ax[0].plot([-.5, .5], [snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], '--r')
+ax[0].set_title('Percent ribosome genes per cell')
 
-    # Histogram of values in the second panel
-    y, x, _ = ax[1].hist(
-        adata.obs['pct_counts_rb'], 
-        bins=int(np.sqrt(adata.n_obs))
-        )
-    ax[1].plot([snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], [1, y.max()], '--r')
-    ax[1].set_ylim(0, y.max())
-    ax[1].set_yscale("log")
-    ax[1].set_xlabel('percent')
-    ax[1].set_ylabel('number of cells')
-    ax[1].set_title('Percent ribosome genes per cell')
-    plt.savefig(snakemake.output.ribo_figure, dpi=300)
+# Histogram of values in the second panel
+y, x, _ = ax[1].hist(
+    adata.obs['pct_counts_rb'], 
+    bins=int(np.sqrt(adata.n_obs))
+    )
+ax[1].plot([snakemake.params.ribo_percent_thresh, snakemake.params.ribo_percent_thresh], [1, y.max()], '--r')
+ax[1].set_ylim(0, y.max())
+ax[1].set_yscale("log")
+ax[1].set_xlabel('percent')
+ax[1].set_ylabel('number of cells')
+ax[1].set_title('Percent ribosome genes per cell')
+plt.savefig(snakemake.output.ribo_figure, dpi=300)
 
 
 # Number of genes
 fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-    fig.suptitle(f' Number of Genes', fontsize=BIGGER_SIZE)
+fig.suptitle(f' Number of Genes', fontsize=BIGGER_SIZE)
 
-    # Violin plot in the first panel
-    sc.pl.violin(adata, ['n_genes_by_counts'], jitter=0.5, ax=ax[0], show=False)
-    ax[0].set_ylabel('total counts')
-    ax[0].set_xlim(-.75, .75)
-    ax[0].plot([-.5, .5], [snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], '--r')
-    ax[0].set_title('Number of genes per cell')
+# Violin plot in the first panel
+sc.pl.violin(adata, ['n_genes_by_counts'], jitter=0.5, ax=ax[0], show=False)
+ax[0].set_ylabel('total counts')
+ax[0].set_xlim(-.75, .75)
+ax[0].plot([-.5, .5], [snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], '--r')
+ax[0].set_title('Number of genes per cell')
 
-    # Histogram of values in the second panel
-    y, x, _ = ax[1].hist(
-        adata.obs['n_genes_by_counts'], 
-        bins=int(np.sqrt(adata.n_obs))
-        )
-    ax[1].plot([snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], [1, y.max()], '--r')
-    ax[1].set_ylim(0, y.max())
-    ax[1].set_xlabel('total counts')
-    ax[1].set_ylabel('number of cells')
-    ax[1].set_title('Number of genes per cell')
-    plt.savefig(snakemake.output.gene_counts_figure, dpi=300)
-
-
+# Histogram of values in the second panel
+y, x, _ = ax[1].hist(
+    adata.obs['n_genes_by_counts'], 
+    bins=int(np.sqrt(adata.n_obs))
+    )
+ax[1].plot([snakemake.params.min_genes_per_cell, snakemake.params.min_genes_per_cell], [1, y.max()], '--r')
+ax[1].set_ylim(0, y.max())
+ax[1].set_xlabel('total counts')
+ax[1].set_ylabel('number of cells')
+ax[1].set_title('Number of genes per cell')
+plt.savefig(snakemake.output.gene_counts_figure, dpi=300)
 
 # Doublet QC
 fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-    fig.suptitle(f' Doublet QC', fontsize=BIGGER_SIZE)
+fig.suptitle(f' Doublet QC', fontsize=BIGGER_SIZE)
 
-    # Violin plot in the first panel
-    sc.pl.violin(doublet_adata, ['doublet_score'], jitter=0.5, ax=ax[0], show=False)
-    ax[0].plot([-.5, .5], [snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], '--r')
-    ax[0].set_ylabel('droplet score')
-    ax[0].set_xlim(-.75, .75)
-    ax[0].set_title('Doublet score per cell')
+# Violin plot in the first panel
+sc.pl.violin(doublet_adata, ['doublet_score'], jitter=0.5, ax=ax[0], show=False)
+ax[0].plot([-.5, .5], [snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], '--r')
+ax[0].set_ylabel('droplet score')
+ax[0].set_xlim(-.75, .75)
+ax[0].set_title('Doublet score per cell')
 
-    # Histogram
-    y, x, _ = ax[1].hist(
-        doublet_adata.obs['doublet_score'], 
-        bins=int(doublet_adata.n_obs))
-    ax[1].plot([snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
-    ax[1].set_ylim(0, y.max())
-    ax[1].set_xlabel('droplet score')
-    ax[1].set_ylabel('number of droplets')
-    ax[1].set_title('Doublet score per cell')
-    plt.savefig(snakemake.output.doublet_figure, dpi=300)
+# Histogram
+y, x, _ = ax[1].hist(
+    doublet_adata.obs['doublet_score'], 
+    bins=int(doublet_adata.n_obs))
+ax[1].plot([snakemake.params.doublet_thresh, snakemake.params.doublet_thresh], [1, y.max()], '--r')
+ax[1].set_ylim(0, y.max())
+ax[1].set_xlabel('droplet score')
+ax[1].set_ylabel('number of droplets')
+ax[1].set_title('Doublet score per cell')
+plt.savefig(snakemake.output.doublet_figure, dpi=300)
 
 
 # Genes by total counts
