@@ -50,7 +50,7 @@ rule all:
             sample=samples
             ),"""
 # Uncomment when you want to model rna data
-        """merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'"""
+        """merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad',"""
 # Uncomment when you want to run DGE/DAR analysis
         """output_DGE_data = expand(
             work_dir + '/data/significant_genes/rna/rna_{cell_type}_{disease}_DGE.csv',
