@@ -42,20 +42,23 @@ envs = {
 rule all:
     input:
         genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'
+
 # Uncomment nd add a comma to the above line when you have verified QC metrics
         """rna_anndata=expand(
             work_dir+'/{sample}/03_{sample}_anndata_filtered_rna.h5ad', 
             zip,
             batch=batches,
             sample=samples
-            ),"""
+        ),"""
+
 # Uncomment when you want to model rna data
         """merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad',"""
+
 # Uncomment when you want to run DGE/DAR analysis
         """output_DGE_data = expand(
             work_dir + '/data/significant_genes/rna/rna_{cell_type}_{disease}_DGE.csv',
-        cell_type = cell_types,
-        disease = diseases
+            cell_type = cell_types,
+            disease = diseases
         )"""
 
 # Uncomment when you want to run cellbender
