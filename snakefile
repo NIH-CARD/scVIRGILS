@@ -40,27 +40,29 @@ envs = {
     }
 
 rule all:
-    input:
-# Uncomment to view QC data
-        #genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'
+    input: 
+# Leave the following to view QC data, otherwise, replace with below options.
+        genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'
 
-# Uncomment when you have verified QC metrics
-        #rna_anndata=expand(
-        #    work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
-        #    zip,
-        #    batch=batches,
-        #    sample=samples
-        #),
+"""
+# replace above input for rule all when you have verified QC metrics
+        rna_anndata=expand(
+            work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
+            zip,
+            batch=batches,
+            sample=samples
+        ),
 
-# Uncomment when you want to model rna data
-        #merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'
+# replace above input for rule all when you want to model rna data
+        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'
 
-# Uncomment when you want to run DGE/DAR analysis
-        #output_DGE_data = expand(
-        #    work_dir + '/data/significant_genes/rna/rna_{cell_type}_{disease}_DGE.csv',
-        #    cell_type = cell_types,
-        #    disease = diseases
-        #)
+# replace above input for rule all when you want to run DGE/DAR analysis
+        output_DGE_data = expand(
+            work_dir + '/data/significant_genes/rna/rna_{cell_type}_{disease}_DGE.csv',
+            cell_type = cell_types,
+            disease = diseases
+        )
+"""
 
 # Uncomment when you want to run cellbender
 """rule cellbender:
