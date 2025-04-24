@@ -41,7 +41,7 @@ envs = {
 
 rule all:
     input:
-# Uncomment nd add a comma to the above line when you have verified QC metrics
+# Uncomment to view QC data
         """genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'"""
 
 # Uncomment when you have verified QC metrics
