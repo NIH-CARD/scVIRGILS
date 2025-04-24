@@ -50,7 +50,7 @@ rule all:
             zip,
             batch=batches,
             sample=samples
-        ),"""
+        )"""
 
 # Uncomment when you want to model rna data
         """merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'"""
