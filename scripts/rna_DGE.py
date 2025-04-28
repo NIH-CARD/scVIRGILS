@@ -18,11 +18,12 @@ adata = adata[adata.obs['cell_type'] == snakemake.params.cell_type].copy()
 disease_name = snakemake.params.disease
 control_name = snakemake.params.control
 disease_param = snakemake.params.disease_param
+batch = snamkemake.params.batches
 
 # Get pseudo-bulk profile
 pdata = dc.get_pseudobulk(
     adata,
-    sample_col='sample',
+    sample_col='Sample',
     groups_col=None,
     layer='counts',
     mode='sum',
@@ -54,6 +55,9 @@ dc.get_metadata_associations(
 )
 
 # Export pseudobulk
+# Rewrite adata.uns with stringified keys
+adata.uns = {str(k): v for k, v in adata.uns.items()}
+
 pdata.write_h5ad(snakemake.output.celltype_pseudobulk)
 
 pdata_genes = dc.filter_by_expr(
@@ -71,7 +75,7 @@ inference = DefaultInference(n_cpus=64)
 
 dds = DeseqDataSet(
     adata=pdata,
-    design_factors=[disease_param, 'batch'],
+    design_factors=[disease_param, batch],
     refit_cooks=True,
     inference=inference,
 )
