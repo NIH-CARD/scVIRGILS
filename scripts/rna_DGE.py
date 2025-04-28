@@ -18,7 +18,7 @@ adata = adata[adata.obs['cell_type'] == snakemake.params.cell_type].copy()
 disease_name = snakemake.params.disease
 control_name = snakemake.params.control
 disease_param = snakemake.params.disease_param
-batch = snamkemake.params.batches
+batch = snakemake.params.batches
 
 # Get pseudo-bulk profile
 pdata = dc.get_pseudobulk(
