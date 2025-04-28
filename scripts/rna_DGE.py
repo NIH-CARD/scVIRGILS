@@ -23,6 +23,7 @@ disease_param = snakemake.params.disease_param
 pdata = dc.get_pseudobulk(
     adata,
     sample_col='sample',
+    groups_col=None,
     layer='counts',
     mode='sum',
     min_cells=10,
