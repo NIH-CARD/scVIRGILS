@@ -56,7 +56,7 @@ dc.get_metadata_associations(
 # Export pseudobulk
 # CSV pseudobulk
 adata_df = pd.DataFrame(pdata.X)
-sample_cell = pdata.obs[['sample_id', 'cell_type', disease_param]]
+sample_cell = pdata.obs[[snakemake.params.sample_key, 'cell_type', disease_param]]
 adata_df.columns = pdata.var_names.to_list()
 adata_df.index = sample_cell.index
 adata_df = pd.merge(left=sample_cell, right=adata_df, left_index=True, right_index=True)
