@@ -23,7 +23,7 @@ disease_param = snakemake.params.disease_param
 pdata = dc.get_pseudobulk(
     adata,
     sample_col=snakemake.params.sample_key,
-    groups_col=None,
+    groups_col=disease_param,
     layer='counts',
     mode='sum',
     min_cells=10,
@@ -75,7 +75,7 @@ pdata_genes = dc.filter_by_expr(
 pdata = pdata[:, pdata_genes].copy()
 
 # Determine the number of cpus to use
-inference = DefaultInference(n_cpus=64)
+inference = DefaultInference(n_cpus=1)
 
 dds = DeseqDataSet(
     adata=pdata,
