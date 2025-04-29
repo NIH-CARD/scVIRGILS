@@ -233,7 +233,7 @@ rule DGE:
         control = control,
         disease = lambda wildcards, output: output[0].split("_")[-2],
         cell_type = lambda wildcards, output: output[0].split("_")[-3],
-        batch = batches
+        batches = batches
     singularity:
         envs['decoupler']
     threads:
