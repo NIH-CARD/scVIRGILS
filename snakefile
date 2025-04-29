@@ -227,13 +227,13 @@ rule DGE:
     output:
         output_DGE_data = work_dir + '/data/significant_genes/rna/rna_{cell_type}_{disease}_DGE.csv',
         output_figure = work_dir + 'figures/{cell_type}/rna_{cell_type}_{disease}_DAR.png',
-        celltype_pseudobulk = work_dir+'/data/celltypes/{cell_type}/rna_{cell_type}_{disease}_pseudobulk.h5ad'
+        celltype_pseudobulk = work_dir+'/data/celltypes/{cell_type}/rna_{cell_type}_{disease}_pseudobulk.csv'
     params:
         disease_param = disease_param,
         control = control,
         disease = lambda wildcards, output: output[0].split("_")[-2],
         cell_type = lambda wildcards, output: output[0].split("_")[-3],
-        batches = batches
+        sample_key = sample_key
     singularity:
         envs['decoupler']
     threads:
