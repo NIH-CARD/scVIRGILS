@@ -234,6 +234,7 @@ rule DGE:
         disease = lambda wildcards, output: output[0].split("_")[-2],
         cell_type = lambda wildcards, output: output[0].split("_")[-3],
         sample_key = sample_key
+        seq_batch_key = seq_batch_key
     singularity:
         envs['decoupler']
     threads:
