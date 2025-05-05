@@ -207,7 +207,7 @@ rule annotate:
 
 rule export_celltypes:
     input:
-        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5mu'
+        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'
     output:
         celltype_rna = work_dir+'/data/celltypes/{cell_type}/rna.h5ad'
     params:
