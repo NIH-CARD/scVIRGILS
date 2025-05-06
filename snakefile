@@ -69,7 +69,8 @@ rule cellbender:
         rna_anndata =data_dir+'/{sample}/raw_feature_bc_matrix.h5',
         cwd = data_dir+'/{sample}/'
     output:
-        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts.h5'
+        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts.h5',
+        rna_anndata_filtered = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
     params:
         sample='{sample}'
     resources:
@@ -81,7 +82,7 @@ rule cellbender:
 rule rna_preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata_filtered = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
     output:
         rna_anndata = work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
     singularity:
