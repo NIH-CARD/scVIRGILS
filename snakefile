@@ -81,7 +81,7 @@ rule cellbender:
 rule rna_preprocess:
     input:
         metadata_table=metadata_table,
-        rna_anndata = data_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
     output:
         rna_anndata = work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad'
     singularity:
