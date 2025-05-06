@@ -69,7 +69,7 @@ rule cellbender:
         rna_anndata =data_dir+'/{sample}/raw_feature_bc_matrix.h5',
         cwd = data_dir+'/{sample}/'
     output:
-        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts_filtered.h5'
+        rna_anndata = work_dir+'/{sample}/cellbender_gex_counts.h5'
     params:
         sample='{sample}'
     resources:
