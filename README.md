@@ -12,7 +12,7 @@ The modules of Scanpy (https://github.com/scverse/scanpy) and SCVI (https://gith
 
 ## Pipeline
 
-![screenshot](images/scVIRGILS.pdf)
+[View PDF](images/scVIRGILS.pdf)
 
 ### To get started
 
