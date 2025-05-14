@@ -1,7 +1,6 @@
 # scVIRGILS
 
 ## single-cell Variational-Inference for Reduced-dimensionality Gene-expression Interactions of Laboratory Samples
-![image](https://github.com/user-attachments/assets/30f4ae91-56b9-488d-8caa-5fa5ff7c8523)
 
 
 Focus on the analysis, not the processing. 
