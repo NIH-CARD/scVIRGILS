@@ -9,8 +9,13 @@ import decoupler as dc
 from pydeseq2.dds import DeseqDataSet, DefaultInference
 from pydeseq2.ds import DeseqStats
 
+seq_batch_key = snakemake.params.seq_batch_key
+
 # Open rna
 adata = sc.read_h5ad(snakemake.input.rna_anndata)
+
+# Convert SampleID to categorical and then to codes (integers)
+adata.obs[seq_batch_key] = pd.Categorical(adata.obs[seq_batch_key]).codes
 
 adata = adata[adata.obs['cell_type'] == snakemake.params.cell_type].copy()
 
