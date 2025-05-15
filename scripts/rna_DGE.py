@@ -14,8 +14,7 @@ seq_batch_key = snakemake.params.seq_batch_key
 # Open rna
 adata = sc.read_h5ad(snakemake.input.rna_anndata)
 
-# Convert SampleID to categorical and then to codes (integers)
-adata.obs["seq_batch_numeric"] = pd.Categorical(adata.obs[seq_batch_key]).codes
+
 
 adata = adata[adata.obs['cell_type'] == snakemake.params.cell_type].copy()
 
@@ -37,6 +36,8 @@ pdata = dc.get_pseudobulk(
 
 # Store raw counts in layers
 pdata.layers['counts'] = pdata.X.copy()
+# Convert SampleID to categorical and then to codes (integers)
+pdata.obs["seq_batch_numeric"] = pd.Categorical(pdata.obs["seq_batch_numeric"]).codes
 
 # Normalize, scale and compute pca
 sc.pp.normalize_total(pdata, target_sum=1e4)
