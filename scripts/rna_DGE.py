@@ -15,7 +15,7 @@ seq_batch_key = snakemake.params.seq_batch_key
 adata = sc.read_h5ad(snakemake.input.rna_anndata)
 
 # Convert SampleID to categorical and then to codes (integers)
-adata.obs[seq_batch_key] = pd.Categorical(adata.obs[seq_batch_key]).codes
+adata.obs["seq_batch_numeric"] = pd.Categorical(adata.obs[seq_batch_key]).codes
 
 adata = adata[adata.obs['cell_type'] == snakemake.params.cell_type].copy()
 
