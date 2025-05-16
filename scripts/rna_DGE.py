@@ -37,7 +37,7 @@ pdata = dc.get_pseudobulk(
 # Store raw counts in layers
 pdata.layers['counts'] = pdata.X.copy()
 # Convert SampleID to categorical and then to codes (integers)
-pdata.obs["seq_batch_numeric"] = pd.Categorical(pdata.obs["seq_batch_numeric"]).codes
+pdata.obs["seq_batch_numeric"] = pd.Categorical(pdata.obs[seq_batch_key]).codes
 
 # Normalize, scale and compute pca
 sc.pp.normalize_total(pdata, target_sum=1e4)
