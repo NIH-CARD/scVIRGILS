@@ -10,15 +10,15 @@ with the parameters upon which quality control filtering can be done.
 
 # Read the samples table once
 samples = pd.read_csv(snakemake.input.metadata_table)
-samples['participant_id'] = samples['participant_id'].astype(str)
+samples[snakemake.params.sample_key] = samples[snakemake.params.sample_key].astype(str)
 
 # Extract the metadata for the specific sample in one step
-metadata = samples[samples['participant_id'] == str(snakemake.params.sample)].iloc[0]
+metadata = samples[samples[snakemake.params.sample_key] == str(snakemake.params.sample)].iloc[0]
 
 """Preprocess the RNA data"""
 
 # Read the single-cell data
-adata = sc.read_10x_h5(snakemake.input.rna_anndata)
+adata = sc.read_10x_h5(snakemake.input.rna_anndata_filtered)
 
 # Ensure unique variable names (MUST BE DONE FIRST!)
 adata.var_names_make_unique()
@@ -31,14 +31,14 @@ adata.raw = adata
 adata.var['mt'] = adata.var_names.str.startswith('MT-')
 adata.var['rb'] = adata.var_names.str.startswith(('RPL', 'RPS'))
 
-print(adata)
 # Calculate QC metrics
 sc.pp.calculate_qc_metrics(adata, qc_vars=['rb', 'mt'], percent_top=None, log1p=False, inplace=True)
 
 # Run scrublet to identify doublets
-#sc.external.pp.scrublet(adata, expected_doublet_rate=(adata.n_obs / 1000) * 0.008)
-#adata.obs.drop('predicted_doublet', axis=1, inplace=True)
-#adata.obs['cell_barcode'] = adata.obs_names
+"""THIS IS NOW CALCULATED AFTER MERGING"""
+sc.pp.scrublet(adata, expected_doublet_rate=(adata.n_obs / 1000) * 0.008, threshold=0.15)
+adata.obs.drop('predicted_doublet', axis=1, inplace=True)
+adata.obs['cell_barcode'] = adata.obs_names
 
 # Add metadata to the AnnData object directly from the metadata dataframe
 for key in metadata.to_dict():
@@ -54,10 +54,10 @@ adata.layers['cpm']=adata.X.copy()
 sc.pp.log1p(adata)
 
 # Save the normalized-log data
-adata.layers['data']=adata.X.copy() 
+adata.layers['log-norm']=adata.X.copy() 
 
-# Calculate cell cycle() -- This is to account for genes that are attributed to cells that are in different stages of the cell cycle, e.g. metaphase...etc. This list is from https://www.science.org/doi/10.1126/science.aad0501
-cell_cycle_genes = [x.strip() for x in open(snakemake.input.cell_cycle_genes)]
+# Calculate cell cycle()
+cell_cycle_genes = [x.strip() for x in open('/data/CARD_singlecell/SN_atlas/input/lab_cell_cycle_genes.txt')]
 s_genes = cell_cycle_genes[:43]
 g2m_genes = cell_cycle_genes[43:]
 try:
@@ -67,3 +67,4 @@ except:
 
 # Save the AnnData object
 adata.write(filename=snakemake.output.rna_anndata, compression='gzip')
+

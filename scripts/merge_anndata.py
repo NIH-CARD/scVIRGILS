@@ -18,13 +18,8 @@ adata.layers['counts'] = scipy.sparse.csr_matrix(adata.layers['counts'].copy())
 adata.layers['cpm'] = scipy.sparse.csr_matrix(adata.layers['cpm'].copy())
 adata.layers['log-norm'] = scipy.sparse.csr_matrix(adata.layers['log-norm'].copy())
 
-# Plot UMAPs
-# Compute overall UMAP
-sc.pp.neighbors(adata, n_neighbors=10)  # Compute neighbors
-sc.tl.umap(adata)  # Run UMAP
-
 # Write out the unfiltered dataset
 adata.write_h5ad(
-    filename=snakemake.output.merged_rna_anndata_unfiltered, 
+    filename=snakemake.output.merged_rna_anndata, 
     compression='gzip'
     )
