@@ -71,4 +71,10 @@ Filtered RNA samples are merged into an atlas and multidimensional scaling is pe
 
 Cell types of the modeled and clustered RNA atlas are estimated using over-representation analysis and a currated list of cell gene markers.
 
-### Separate atlas into individual celltypes (rule export_celltypes) 
+### Separate atlas into individual celltypes (rule export_celltypes)
+
+Separate h5ad files for each cell type are extracted and saved.
+
+### DGE Analysis (rule DGE)
+
+Each cell type pseudobulked and analyzed for differentially expressed genes. 
