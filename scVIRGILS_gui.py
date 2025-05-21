@@ -40,8 +40,7 @@ def check_all_ready():
 def start_snakemake_job():
     try:
         result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True)
-        output = result.stdout.decode()
-        match = re.search(r'Submitted batch job (\d+)', output)
+        match = re.search(r'Submitted batch job (\d+)', result.stdout)
         if match:
             job_id = match.group(1)
             status_label.config(text=f"Submitted job {job_id}", fg='blue')
@@ -50,7 +49,6 @@ def start_snakemake_job():
         else:
             status_label.config(text="Failed to parse job ID", fg='red')
     except subprocess.CalledProcessError as e:
-        error_output = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
         status_label.config(text=f"sbatch failed: {e.stderr}", fg='red')
 
 # This function checks the SLURM job status
