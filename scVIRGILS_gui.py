@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 
 # This function helps fill in entered data to the snakefile
 def fill(variable_name, entered_path, status_label, flag_var):
-    target_file = "snakefile"
+    target_file = "scVIRGILS/snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
     updated = False
 
@@ -27,7 +27,7 @@ def fill(variable_name, entered_path, status_label, flag_var):
         if not updated:
             file.write(new_line)
 
-    status_label.config(text=f"Saved: {new_line.strip()}", fg='green')
+    status_label.config(text=f"{variable_name} saved!", fg='green')
     flag_var.set(True)
     check_all_ready()
 
@@ -39,17 +39,14 @@ def check_all_ready():
 # This function starts the snakemake job and monitors it
 def start_snakemake_job():
     try:
-        result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True)
-        match = re.search(r'Submitted batch job (\d+)', result.stdout)
-        if match:
-            job_id = match.group(1)
-            status_label.config(text=f"Submitted job {job_id}", fg='blue')
-            progressbar.start()
-            check_job_status(job_id)
-        else:
-            status_label.config(text="Failed to parse job ID", fg='red')
+        result = subprocess.run(['sbatch', 'scVIRGILS/snakemake.sh'], capture_output=True, check=True)
+        job_id = result.stdout.decode().strip()
+        status_label.config(text=f"submitted job {job_id}", fg='blue')
+        progressbar.start()
+        check_job_status(job_id)
     except subprocess.CalledProcessError as e:
-        status_label.config(text=f"sbatch failed: {e.stderr}", fg='red')
+        error_output = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
+        status_label.config(text=f"sbatch failed: {error_output}", fg='red')
 
 # This function checks the SLURM job status
 def check_job_status(job_id):
@@ -67,18 +64,24 @@ root = tk.Tk()
 root.geometry('1000x500')
 root.title('scVIRGILS')
 
+root.grid_columnconfigure(0, minsize=400)  # Column 0 is at least 200px wide
+root.grid_columnconfigure(1, minsize=100)  # Column 1 is at least 250px wide
+root.grid_columnconfigure(2, minsize=150)  # Column 2 is 100px
+root.grid_columnconfigure(3, minsize=200)
+
+
 # Add image to top
 for i in range(4):
     root.columnconfigure(i, weight=1)
 
-image_path = "images/VIRGIL.png"
+image_path = "scVIRGILS/images/VIRGIL.png"
 image = Image.open(image_path)
 image = image.resize((100, 100))
 photo = ImageTk.PhotoImage(image)
 
 image_label = tk.Label(root, image=photo)
 image_label.image = photo
-image_label.grid(row=0, column=4, columnspan=4, pady=(10, 0), sticky='n')
+image_label.grid(row=0, column=4, columnspan=4, pady=(10), sticky='n')
 
 # Saving necessary variables for the succesful entry of information
 cellranger_saved = tk.BooleanVar(value=False)
@@ -165,10 +168,10 @@ QC_run.grid(row=5, column=3, padx=10, pady=10, sticky='w')
 
 # Progress Bar and status label
 progressbar = ttk.Progressbar(root, mode='indeterminate', style='Striped.Horizontal.TProgressbar')
-progressbar.grid(row=6, column=0, columnspan=4, padx=10, sticky='w')
+progressbar.grid(row=5, column=0, columnspan=4, padx=10, sticky='w')
 
 status_label = tk.Label(root, text="", fg="black", anchor='w')
-status_label.grid(row=7, column=0, pady=10, padx=10, sticky='w')
+status_label.grid(row=6, column=0, pady=10, columnspan=4, padx=10, sticky='w')
 
 
 root.mainloop()
