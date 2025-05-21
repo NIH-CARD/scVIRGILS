@@ -4,12 +4,6 @@ import subprocess
 import re
 from PIL import Image, ImageTk
 
-# Saving necessary variables for the succesful entry of information
-cellranger_saved = tk.BooleanVar(value=False)
-metadata_saved = tk.BooleanVar(value=False)
-sample_key_saved = tk.BooleanVar(value=False)
-seq_batch_key_saved = tk.BooleanVar(value=False)
-
 # This function helps fill in entered data to the snakefile
 def fill(variable_name, entered_path, status_label, flag_var):
     target_file = "snakefile"
@@ -82,6 +76,12 @@ photo = ImageTk.PhotoImage(image)
 image_label = tk.Label(root, image=photo)
 image_label.image = photo
 image_label.grid(row=0, column=4, pady=(10, 0))
+
+# Saving necessary variables for the succesful entry of information
+cellranger_saved = tk.BooleanVar(value=False)
+metadata_saved = tk.BooleanVar(value=False)
+sample_key_saved = tk.BooleanVar(value=False)
+seq_batch_key_saved = tk.BooleanVar(value=False)
 
 # Correct label widget (capital L)
 interface_summary = ttk.Label(
