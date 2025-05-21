@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 
 # This function helps fill in entered data to the snakefile
 def fill(variable_name, entered_path, status_label, flag_var):
-    target_file = "scRNA-pipeline/snakefile"
+    target_file = "snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
     updated = False
 
