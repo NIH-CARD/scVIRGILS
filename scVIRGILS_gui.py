@@ -68,7 +68,7 @@ root.geometry('1000x500')
 root.title('scVIRGILS')
 
 # Add image to top
-image_path = "scVIRGILS/images/VIRGIL.png"
+image_path = "images/VIRGIL.png"
 image = Image.open(image_path)
 image = image.resize((100, 100))
 photo = ImageTk.PhotoImage(image)
