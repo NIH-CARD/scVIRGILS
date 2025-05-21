@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 
 # This function helps fill in entered data to the snakefile
 def fill(variable_name, entered_path, status_label, flag_var):
-    target_file = "scVIRGILS/snakefile"
+    target_file = "snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
     updated = False
 
@@ -39,7 +39,7 @@ def check_all_ready():
 # This function starts the snakemake job and monitors it
 def start_snakemake_job():
     try:
-        result = subprocess.run(['sbatch', 'scVIRGILS/snakemake.sh'], capture_output=True, check=True)
+        result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True)
         job_id = result.stdout.decode().strip()
         status_label.config(text=f"submitted job {job_id}", fg='blue')
         progressbar.start()
@@ -74,7 +74,7 @@ root.grid_columnconfigure(3, minsize=200)
 for i in range(4):
     root.columnconfigure(i, weight=1)
 
-image_path = "scVIRGILS/images/VIRGIL.png"
+image_path = "images/VIRGIL.png"
 image = Image.open(image_path)
 image = image.resize((100, 100))
 photo = ImageTk.PhotoImage(image)
