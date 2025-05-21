@@ -5,6 +5,11 @@ import re
 from PIL import Image, ImageTk
 
 # This function helps fill in entered data to the snakefile
+cellranger_saved = tk.BooleanVar(value=False)
+metadata_saved = tk.BooleanVar(value=False)
+sample_key_saved = tk.BooleanVar(value=False)
+seq_batch_key_saved = tk.BooleanVar(value=False)
+
 def fill(variable_name, entered_path, status_label, flag_var):
     target_file = "snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
