@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import ttk
 import subprocess
 import re
+from PIL import Image, ImageTk
 
 # This function helps fill in entered data to the snakefile
-def fill(variable_name, entered_path, status_label):
-    target_file = "snakefile"
+def fill(variable_name, entered_path, status_label, flag_var):
+    target_file = "scRNA-pipeline/snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
     updated = False
 
@@ -27,6 +28,13 @@ def fill(variable_name, entered_path, status_label):
             file.write(new_line)
 
     status_label.config(text=f"Saved: {new_line.strip()}", fg='green')
+    flag_var.set(True)
+    check_all_ready()
+
+# This is a checker function to make sure the buttons have been clicked and Entries have been saved
+def check_all_ready():
+    if cellranger_saved.get() and metadata_saved.get() and sample_key_saved.get() and seq_batch_key_saved.get():
+        QC_run.config(state='normal')
 
 # This function starts the snakemake job and monitors it
 def start_snakemake_job():
@@ -56,8 +64,18 @@ def check_job_status(job_id):
 
 # ==== GUI ====
 root = tk.Tk()
-root.geometry('1000x250')
+root.geometry('1000x500')
 root.title('scVIRGILS')
+
+# Add image to top
+image_path = "scVIRGILS/images/VIRGIL.png"
+image = Image.open(image_path)
+image = image.resize((100, 100))
+photo = ImageTk.PhotoImage(image)
+
+image_label = tk.Label(root, image=photo)
+image_label.image = photo
+image_label.grid(row=0, column=4, pady=(10, 0))
 
 # Correct label widget (capital L)
 interface_summary = ttk.Label(
@@ -81,7 +99,7 @@ status_label_cellranger = tk.Label(root, text="", anchor='w', justify='left')
 status_label_cellranger.grid(row=1, column=3, padx=10, pady=10, sticky='w')
 
 # Path button (CELLRANGER)
-path_button_cellranger = ttk.Button(root, text='Save Path', command=lambda: fill("data_dir", data_dir_entry.get(), status_label_cellranger))
+path_button_cellranger = ttk.Button(root, text='Save Path', command=lambda: fill("data_dir", data_dir_entry.get(), status_label_cellranger, cellranger_saved))
 path_button_cellranger.grid(row=1, column=2, padx=10, pady=10, sticky='w')
 
 # Label for path (METADATA)
@@ -97,7 +115,7 @@ status_label_metadata = tk.Label(root, text="", anchor='w', justify='left')
 status_label_metadata.grid(row=2, column=3, padx=10, pady=10, sticky='w')
 
 # Path button (METADATA)
-path_button_metadata = ttk.Button(root, text='Save Path', command=lambda: fill("metadata_table", metadata_dir_entry.get(), status_label_metadata))
+path_button_metadata = ttk.Button(root, text='Save Path', command=lambda: fill("metadata_table", metadata_dir_entry.get(), status_label_metadata, metadata_saved))
 path_button_metadata.grid(row=2, column=2, padx=10, pady=10, sticky='w')
 
 # Label for SAMPLE_KEY
@@ -113,7 +131,7 @@ status_label_sample_key = tk.Label(root, text="", anchor='w', justify='left')
 status_label_sample_key.grid(row=3, column=3, padx=10, pady=10, sticky='w')
 
 # Button or SAMPLE_KEY
-sample_key_button = ttk.Button(root, text='Save sample_key', command=lambda: fill("sample_key", sample_key_entry.get(), status_label_sample_key))
+sample_key_button = ttk.Button(root, text='Save sample_key', command=lambda: fill("sample_key", sample_key_entry.get(), status_label_sample_key, sample_key_saved))
 sample_key_button.grid(row=3, column=2, padx=10, pady=10, sticky='w')
 
 # Label for SEQ_BATCH_KEY
@@ -129,15 +147,15 @@ status_label_seq_batch_key = tk.Label(root, text="", anchor='w', justify='left')
 status_label_seq_batch_key.grid(row=4, column=3, padx=10, pady=10, sticky='w')
 
 # Button for SEQ_BATCH_KEY
-seq_batch_key_button = ttk.Button(root, text='Save seq_batch_key', command=lambda: fill("seq_batch_key", seq_batch_entry.get(), status_label_seq_batch_key))
+seq_batch_key_button = ttk.Button(root, text='Save seq_batch_key', command=lambda: fill("seq_batch_key", seq_batch_entry.get(), status_label_seq_batch_key, seq_batch_key_saved))
 seq_batch_key_button.grid(row=4, column=2, padx=10, pady=10, sticky='w')
 
 # Button to Start running the snakefile
-QC_run = ttk.Button(root, text='Run QC!', command=start_snakemake_job)
+QC_run = ttk.Button(root, text='STEP 1: Run QC!', command=start_snakemake_job, state='disabled')
 QC_run.grid(row=5, column=3, padx=10, pady=10, sticky='w')
 
 # Progress Bar and status label
-progressbar = ttk.Progressbar(root, mode='indeterminate')
+progressbar = ttk.Progressbar(root, mode='indeterminate', style='Striped.Horizontal.TProgressbar')
 progressbar.grid(row=6, column=0, columnspan=4, padx=10, sticky='w')
 
 status_label = tk.Label(root, text="", fg="black", anchor='w')
