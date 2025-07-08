@@ -3,13 +3,66 @@ from tkinter import ttk
 import subprocess
 import re
 from PIL import Image, ImageTk
+import webbrowser
+import json
+import os
 
-# This function helps fill in entered data to the snakefile
+# Globals
+current_job_id = None
+job_running = False
+
+# File to store GUI state
+STATE_FILE = "gui_state.json"
+
+# Initialize root
+root = tk.Tk()
+root.geometry('1200x700')
+root.minsize(900, 600)
+root.title('scVIRGILS')
+
+# Scrollable Canvas Frame
+container = tk.Frame(root)
+container.pack(fill=tk.BOTH, expand=True)
+
+canvas = tk.Canvas(container, borderwidth=0)
+canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+canvas.configure(yscrollcommand=scrollbar.set)
+
+scrollable_frame = tk.Frame(canvas)
+scrollable_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+def _on_mousewheel(event):
+    canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+def on_frame_configure(event):
+    canvas.configure(scrollregion=canvas.bbox("all"))
+
+def on_canvas_configure(event):
+    canvas.itemconfig(scrollable_window, width=event.width)
+
+scrollable_frame.bind("<Configure>", on_frame_configure)
+canvas.bind("<Configure>", on_canvas_configure)
+root.bind_all("<MouseWheel>", _on_mousewheel)
+
+# Input state vars
+cellranger_saved = tk.BooleanVar(value=False)
+metadata_saved = tk.BooleanVar(value=False)
+sample_key_saved = tk.BooleanVar(value=False)
+seq_batch_key_saved = tk.BooleanVar(value=False)
+
+# Style
+style = ttk.Style()
+style.configure('Header.Label', font=('Helvetica', 16, 'bold'))
+style.map('TButton', foreground=[('disabled', '#808080')], background=[('disabled', '#d3d3d3')])
+
+# Fill Snakefile Function
 def fill(variable_name, entered_path, status_label, flag_var):
     target_file = "snakefile"
     new_line = f'{variable_name} = "{entered_path}"\n'
     updated = False
-
     try:
         with open(target_file, 'r') as file:
             lines = file.readlines()
@@ -31,148 +84,164 @@ def fill(variable_name, entered_path, status_label, flag_var):
     flag_var.set(True)
     check_all_ready()
 
-# This is a checker function to make sure the buttons have been clicked and Entries have been saved
+# Readiness check
 def check_all_ready():
     if cellranger_saved.get() and metadata_saved.get() and sample_key_saved.get() and seq_batch_key_saved.get():
-        QC_run.config(state='normal')
+        if not job_running:
+            QC_run.config(state='normal')
+        else:
+            QC_run.config(state='disabled')
+    else:
+        QC_run.config(state='disabled')
 
-# This function starts the snakemake job and monitors it
+# Submit Snakemake job
 def start_snakemake_job():
+    global current_job_id, job_running
     try:
-        result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True)
-        job_id = result.stdout.decode().strip()
-        status_label.config(text=f"submitted job {job_id}", fg='blue')
-        progressbar.start()
-        check_job_status(job_id)
-    except subprocess.CalledProcessError as e:
-        error_output = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
-        status_label.config(text=f"sbatch failed: {error_output}", fg='red')
+        result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True, text=True)
+        match = re.search(r'Submitted batch job (\d+)', result.stdout)
+        if match:
+            job_id = match.group(1)
+            current_job_id = job_id
+            job_running = True
+            QC_run.config(state='disabled')
+            status_label.config(text=f"Submitted job {job_id}", fg='blue')
+            progressbar.start()
+            save_gui_state()
+            check_job_status(job_id)
+        else:
+            status_label.config(text=f"No job ID found in sbatch output: {result.stdout}", fg='red')
+    except Exception as e:
+        status_label.config(text=f"Error starting job: {e}", fg='red')
 
-# This function checks the SLURM job status
+# Check SLURM job status
 def check_job_status(job_id):
+    global job_running, current_job_id
     result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
     if job_id in result.stdout:
-        status_label.config(text=f"Job {job_id} is still running:", fg='orange')
-        root.after(5000, lambda: check_job_status(job_id)) # checks in 5 sec
+        status_label.config(text=f"Job {job_id} is still running...", fg='orange')
+        root.after(5000, lambda: check_job_status(job_id))
     else:
         status_label.config(text=f"Job {job_id} is complete!", fg='green')
         progressbar.stop()
-        progressbar['value']=100
+        progressbar['value'] = 100
+        job_running = False
+        current_job_id = None
+        save_gui_state()
+        next_process()
 
-# ==== GUI ====
-root = tk.Tk()
-root.geometry('1000x500')
-root.title('scVIRGILS')
+# Next step enablement
+def next_process():
+    open_mito_qc.config(state='normal')
+    open_ribo_qc.config(state='normal')
+    open_gene_qc.config(state='normal')
+    open_doublet_qc.config(state='normal')
+    open_genes_by_counts_qc.config(state='normal')
 
-root.grid_columnconfigure(0, minsize=400)  # Column 0 is at least 200px wide
-root.grid_columnconfigure(1, minsize=100)  # Column 1 is at least 250px wide
-root.grid_columnconfigure(2, minsize=150)  # Column 2 is 100px
-root.grid_columnconfigure(3, minsize=200)
+# GUI State persistence
+def save_gui_state():
+    state = {
+        "data_dir": data_dir_entry.get(),
+        "metadata_table": metadata_dir_entry.get(),
+        "sample_key": sample_key_entry.get(),
+        "seq_batch_key": seq_batch_entry.get(),
+        "cellranger_saved": cellranger_saved.get(),
+        "metadata_saved": metadata_saved.get(),
+        "sample_key_saved": sample_key_saved.get(),
+        "seq_batch_key_saved": seq_batch_key_saved.get(),
+        "current_job_id": current_job_id,
+        "job_running": job_running
+    }
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f)
 
+def load_gui_state():
+    global current_job_id, job_running
+    if not os.path.exists(STATE_FILE):
+        return
+    with open(STATE_FILE, "r") as f:
+        state = json.load(f)
+    data_dir_entry.insert(0, state.get("data_dir", ""))
+    metadata_dir_entry.insert(0, state.get("metadata_table", ""))
+    sample_key_entry.insert(0, state.get("sample_key", ""))
+    seq_batch_entry.insert(0, state.get("seq_batch_key", ""))
+    cellranger_saved.set(state.get("cellranger_saved", False))
+    metadata_saved.set(state.get("metadata_saved", False))
+    sample_key_saved.set(state.get("sample_key_saved", False))
+    seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
+    current_job_id = state.get("current_job_id", None)
+    job_running = state.get("job_running", False)
+    check_all_ready()
+    if current_job_id:
+        QC_run.config(state='disabled')
+        progressbar.start()
+        check_job_status(current_job_id)
 
-# Add image to top
-for i in range(4):
-    root.columnconfigure(i, weight=1)
+# Hook close
+root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
-image_path = "images/VIRGIL.png"
-image = Image.open(image_path)
-image = image.resize((100, 100))
-photo = ImageTk.PhotoImage(image)
+# Interface Text
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Single-cell QC Pipeline', style='Header.Label')
+header.grid(row=0, column=0, columnspan=4, pady=10, sticky='w')
 
-image_label = tk.Label(root, image=photo)
-image_label.image = photo
-image_label.grid(row=0, column=4, columnspan=4, pady=(10), sticky='n')
+# Image
+try:
+    img = Image.open("images/VIRGIL.png")
+    img = img.resize((150, 150))
+    photo = ImageTk.PhotoImage(img)
+    tk.Label(scrollable_frame, image=photo).grid(row=0, column=4, padx=10, sticky='e')
+except:
+    pass
 
-# Saving necessary variables for the succesful entry of information
-cellranger_saved = tk.BooleanVar(value=False)
-metadata_saved = tk.BooleanVar(value=False)
-sample_key_saved = tk.BooleanVar(value=False)
-seq_batch_key_saved = tk.BooleanVar(value=False)
+# Entries and Buttons
+entries = [
+    ("CELLRANGER Path", "data_dir", cellranger_saved),
+    ("METADATA Path", "metadata_table", metadata_saved),
+    ("Sample Key (e.g. sample_id)", "sample_key", sample_key_saved),
+    ("Seq Batch Key (e.g. sequencing_round)", "seq_batch_key", seq_batch_key_saved)
+]
+for i, (label_text, var_name, flag_var) in enumerate(entries):
+    ttk.Label(scrollable_frame, text=label_text, wraplength=400).grid(row=i+1, column=0, sticky='e', padx=10, pady=5)
+    entry = ttk.Entry(scrollable_frame, width=50)
+    entry.grid(row=i+1, column=1, sticky='w')
+    status = tk.Label(scrollable_frame, text="", anchor='w')
+    status.grid(row=i+1, column=3, sticky='w')
+    btn = ttk.Button(scrollable_frame, text='Save', command=lambda v=var_name, e=entry, s=status, f=flag_var: fill(v, e.get(), s, f))
+    btn.grid(row=i+1, column=2, sticky='w', padx=5)
+    if var_name == "data_dir": data_dir_entry = entry
+    elif var_name == "metadata_table": metadata_dir_entry = entry
+    elif var_name == "sample_key": sample_key_entry = entry
+    elif var_name == "seq_batch_key": seq_batch_entry = entry
 
-# Correct label widget (capital L)
-interface_summary = ttk.Label(
-    root,
-    text='This GUI interface is designed for the execution of scVIRGILS. Each step must be completed before continuing to the next. Good Luck!',
-    justify='left'
-)
-interface_summary.grid(row=0, column=0, columnspan=4, pady=10, padx=10, sticky='w')
+QC_run = ttk.Button(scrollable_frame, text='Run QC!', command=start_snakemake_job, state='disabled')
+QC_run.grid(row=6, column=3, pady=10, padx=10, sticky='w')
 
-# Label for path (CELLRANGER)
-path_label_cellranger = ttk.Label(root, text='Path to CELLRANGER files (raw_feature_bc_matrix.h5):')
-path_label_cellranger.grid(row=1, column=0, padx=10, pady=10, sticky='e')
+progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+progressbar.grid(row=6, column=0, columnspan=3, padx=10, sticky='ew')
 
-# Entry for path (CELLRANGER)
-data_dir_entry = ttk.Entry(root)
-data_dir_entry.grid(row=1, column=1, padx=10, pady=10, sticky='w')
-data_dir_entry.focus()  # This sets the focus of the entry bar
+status_label = tk.Label(scrollable_frame, text="Waiting for inputs...", fg="black")
+status_label.grid(row=7, column=0, columnspan=4, pady=10, sticky='w')
 
-# Status label for feedback (CELLRANGER)
-status_label_cellranger = tk.Label(root, text="", anchor='w', justify='left')
-status_label_cellranger.grid(row=1, column=3, padx=10, pady=10, sticky='w')
+# QC View buttons
+view_buttons = [
+    ("% Mitochondria", 'figures/QC_mito_pct.png'),
+    ("% Ribosomal", 'figures/QC_ribo_pct.png'),
+    ("Gene Counts", 'figures/QC_gene_counts.png'),
+    ("Doublet Score", 'figures/QC_doublet.png'),
+    ("Genes by Counts", 'figures/QC_genes_by_counts.png')
+]
 
-# Path button (CELLRANGER)
-path_button_cellranger = ttk.Button(root, text='Save Path', command=lambda: fill("data_dir", data_dir_entry.get(), status_label_cellranger, cellranger_saved))
-path_button_cellranger.grid(row=1, column=2, padx=10, pady=10, sticky='w')
+for i, (text, path) in enumerate(view_buttons):
+    btn = ttk.Button(scrollable_frame, text=f"View {text} QC", command=lambda p=path: webbrowser.open(f"file://{os.path.abspath(p)}"), state='disabled')
+    btn.grid(row=9+i, column=0, columnspan=2, padx=10, pady=5, sticky='w')
+    if i == 0: open_mito_qc = btn
+    elif i == 1: open_ribo_qc = btn
+    elif i == 2: open_gene_qc = btn
+    elif i == 3: open_doublet_qc = btn
+    elif i == 4: open_genes_by_counts_qc = btn
 
-# Label for path (METADATA)
-path_label_metadata = ttk.Label(root, text='Path the METADATA files (.csv):')
-path_label_metadata.grid(row=2, column=0, padx=10, pady=10, sticky='e')
+# Load previous state
+load_gui_state()
 
-# Entry for path (METADATA)
-metadata_dir_entry = ttk.Entry(root)
-metadata_dir_entry.grid(row=2, column=1, padx=10, pady=10, sticky='w')
-
-# Status label (METADATA)
-status_label_metadata = tk.Label(root, text="", anchor='w', justify='left')
-status_label_metadata.grid(row=2, column=3, padx=10, pady=10, sticky='w')
-
-# Path button (METADATA)
-path_button_metadata = ttk.Button(root, text='Save Path', command=lambda: fill("metadata_table", metadata_dir_entry.get(), status_label_metadata, metadata_saved))
-path_button_metadata.grid(row=2, column=2, padx=10, pady=10, sticky='w')
-
-# Label for SAMPLE_KEY
-sample_key_label = ttk.Label(root, text='Key for sample names, required for aggregating while preserving sample info. This must be entered as it appears in metadata (e.g. sample_id):', wraplength=400)
-sample_key_label.grid(row=3, column=0, padx=10, ipady=1, sticky='e')
-
-# Entry for SAMPLE_KEY
-sample_key_entry = ttk.Entry(root)
-sample_key_entry.grid(row=3, column=1, padx=10, pady=10, sticky='w')
-
-# Status label (SAMPLE_KEY)
-status_label_sample_key = tk.Label(root, text="", anchor='w', justify='left')
-status_label_sample_key.grid(row=3, column=3, padx=10, pady=10, sticky='w')
-
-# Button or SAMPLE_KEY
-sample_key_button = ttk.Button(root, text='Save sample_key', command=lambda: fill("sample_key", sample_key_entry.get(), status_label_sample_key, sample_key_saved))
-sample_key_button.grid(row=3, column=2, padx=10, pady=10, sticky='w')
-
-# Label for SEQ_BATCH_KEY
-seq_batch_key_label = ttk.Label(root, text='Key for sequencing batch, requried for batch correction. This must be entered as it appears in the metadata (e.g. sequencing_round):', wraplength=400)
-seq_batch_key_label.grid(row=4, column=0, padx=10, ipady=1, sticky='e')
-
-# Entry for SEQ_BATCH_KEY
-seq_batch_entry = ttk.Entry(root)
-seq_batch_entry.grid(row=4, column=1, padx=10, pady=10, sticky='w')
-
-# Status label (SEQ_BATCH_KEY)
-status_label_seq_batch_key = tk.Label(root, text="", anchor='w', justify='left')
-status_label_seq_batch_key.grid(row=4, column=3, padx=10, pady=10, sticky='w')
-
-# Button for SEQ_BATCH_KEY
-seq_batch_key_button = ttk.Button(root, text='Save seq_batch_key', command=lambda: fill("seq_batch_key", seq_batch_entry.get(), status_label_seq_batch_key, seq_batch_key_saved))
-seq_batch_key_button.grid(row=4, column=2, padx=10, pady=10, sticky='w')
-
-# Button to Start running the snakefile
-QC_run = ttk.Button(root, text='STEP 1: Run QC!', command=start_snakemake_job, state='disabled')
-QC_run.grid(row=5, column=3, padx=10, pady=10, sticky='w')
-
-# Progress Bar and status label
-progressbar = ttk.Progressbar(root, mode='indeterminate', style='Striped.Horizontal.TProgressbar')
-progressbar.grid(row=5, column=0, columnspan=4, padx=10, sticky='w')
-
-status_label = tk.Label(root, text="", fg="black", anchor='w')
-status_label.grid(row=6, column=0, pady=10, columnspan=4, padx=10, sticky='w')
-
-
+# Mainloop
 root.mainloop()
-
