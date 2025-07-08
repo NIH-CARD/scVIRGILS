@@ -99,7 +99,7 @@ def start_snakemake_job():
     global current_job_id, job_running
     try:
         result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True, text=True)
-        match = re.search(r'Submitted batch job (\d+)', result.stdout)
+        match = re.search(r'(\d+)', result.stdout.strip())
         if match:
             job_id = match.group(1)
             current_job_id = job_id
