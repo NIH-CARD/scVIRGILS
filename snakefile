@@ -89,7 +89,7 @@ rule rna_preprocess:
         envs['singlecell']
     params:
         sample='{sample}',
-        sample_key = sample_key
+        sample_key=sample_key
     resources:
         runtime=120, mem_mb=64000, disk_mb=10000, slurm_partition='quick' 
     script:
@@ -181,7 +181,7 @@ rule rna_model:
         model_history = work_dir+'/data/model_elbo/rna_model_history.csv'
     params:
         model = work_dir+'/data/models/rna/',
-        sample_key = sample_key
+        sample_key=sample_key
     threads:
         64
     resources:
@@ -233,8 +233,8 @@ rule DGE:
         control = control,
         disease = lambda wildcards, output: output[0].split("_")[-2],
         cell_type = lambda wildcards, output: output[0].split("_")[-3],
-        sample_key = sample_key,
-        seq_batch_key = seq_batch_key
+        sample_key=sample_key,
+        seq_batch_key=seq_batch_key
     singularity:
         envs['decoupler']
     threads:
