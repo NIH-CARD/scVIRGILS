@@ -149,6 +149,7 @@ def save_gui_state():
         "metadata_saved": metadata_saved.get(),
         "sample_key_saved": sample_key_saved.get(),
         "seq_batch_key_saved": seq_batch_key_saved.get(),
+        "mito_perc_threshold": mito_perc_threshold.get(),
         "current_job_id": current_job_id,
         "job_running": job_running
     }
@@ -171,6 +172,7 @@ def load_gui_state():
     seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
     current_job_id = state.get("current_job_id", None)
     job_running = state.get("job_running", False)
+    mito_perc_threshold = state.get("mito_perc_threshold", False)
     check_all_ready()
     if current_job_id:
         QC_run.config(state='disabled')
@@ -239,6 +241,22 @@ for i, (text, path) in enumerate(view_buttons):
     elif i == 2: open_gene_qc = btn
     elif i == 3: open_doublet_qc = btn
     elif i == 4: open_genes_by_counts_qc = btn
+
+# Add Filtering thresholds for filtering
+# Entries and Buttons
+next_entries = [
+    ("Mitochondria % threshold", "mito_percent_thresh", mito_perc_threshold),
+ 
+for i, (label_text, var_name, flag_var) in enumerate(next_entries):
+    ttk.Label(scrollable_frame, text=label_text, wraplength=400).grid(row=i+1, column=0, sticky='e', padx=10, pady=5)
+    entry = ttk.Entry(scrollable_frame, width=50)
+    entry.grid(row=i+1, column=1, sticky='w')
+    status = tk.Label(scrollable_frame, text="", anchor='w')
+    status.grid(row=i+1, column=3, sticky='w')
+    btn = ttk.Button(scrollable_frame, text='Save', command=lambda v=var_name, e=entry, s=status, f=flag_var: fill(v, e.get(), s, f))
+    btn.grid(row=i+1, column=2, sticky='w', padx=5)
+    if var_name == "mito_percent_thresh": mito_perc_threshold = entry
+
 
 # Load previous state
 load_gui_state()
