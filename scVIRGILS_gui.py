@@ -244,18 +244,36 @@ for i, (text, path) in enumerate(view_buttons):
 
 # Add Filtering thresholds for filtering
 # Entries and Buttons
+# Define the entries you want as tuples (label, var_name)
 next_entries = [
-    ("Mitochondria % threshold", "mito_percent_thresh", mito_perc_threshold),
- 
-for i, (label_text, var_name, flag_var) in enumerate(next_entries):
+    ("Mitochondria % threshold", "mito_percent_thresh"),
+    ("Ribosomal % threshold", "ribo_percent_thresh"),
+    # add more entries here
+]
+
+# Dictionary to hold references to entry widgets
+entry_widgets = {}
+
+for i, (label_text, var_name) in enumerate(next_entries):
     ttk.Label(scrollable_frame, text=label_text, wraplength=400).grid(row=i+1, column=0, sticky='e', padx=10, pady=5)
+    
     entry = ttk.Entry(scrollable_frame, width=50)
     entry.grid(row=i+1, column=1, sticky='w')
+    
     status = tk.Label(scrollable_frame, text="", anchor='w')
     status.grid(row=i+1, column=3, sticky='w')
-    btn = ttk.Button(scrollable_frame, text='Save', command=lambda v=var_name, e=entry, s=status, f=flag_var: fill(v, e.get(), s, f))
+    
+    btn = ttk.Button(scrollable_frame, text='Save',
+                     command=lambda v=var_name, e=entry, s=status: fill(v, e.get(), s))
     btn.grid(row=i+1, column=2, sticky='w', padx=5)
-    if var_name == "mito_percent_thresh": mito_perc_threshold = entry
+    
+    # Save entry widget for later use if needed
+    entry_widgets[var_name] = entry
+
+# Now, for example, to get the Mito threshold value somewhere else, use:
+mito_value = entry_widgets["mito_percent_thresh"].get()
+
+
 
 
 # Load previous state
@@ -263,3 +281,4 @@ load_gui_state()
 
 # Mainloop
 root.mainloop()
+
