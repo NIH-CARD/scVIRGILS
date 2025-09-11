@@ -28,6 +28,12 @@ qc_flags = {
     "genes_by_counts": False
 }
 
+# In your global state:
+job_state = {
+    "QC": {"job_id": None, "running": False, "status_text": "Waiting for QC inputs..."},
+    "Filtering": {"job_id": None, "running": False, "status_text": "Waiting for Filtering inputs..."}
+}
+
 # --------------------------
 # Basic Tk root + layout
 # --------------------------
@@ -144,10 +150,6 @@ def check_all_ready():
         QC_run.config(state='disabled')
 
 def check_filter_ready():
-    """
-    Enable the 'Run Filtering' button only when all threshold entries are saved and non-empty,
-    and no filtering job is currently running.
-    """
     global job_running
     all_filled = all([
         mito_percent_thresh.get(),
@@ -164,7 +166,7 @@ def check_filter_ready():
 # Start a Snakemake job via sbatch
 # --------------------------
 def start_snakemake_job(stage="QC"):
-    global current_job_id, job_running
+    global job_state
 
     sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake_filtering.sh"
     button = QC_run if stage == "QC" else filter_run
@@ -177,11 +179,16 @@ def start_snakemake_job(stage="QC"):
         match = re.search(r'(\d+)', stdout)
         if match:
             job_id = match.group(1)
-            current_job_id = job_id
-            job_running = True
+            # Update job_state
+            job_state[stage].update({
+                "job_id": job_id,
+                "running": True,
+                "status_text": f"{stage} job {job_id} submitted.",
+                "progress": None
+            })
             button.config(state='disabled')
             progress.start()
-            label.config(text=f"{stage} job {job_id} submitted.", fg='blue')
+            label.config(text=job_state[stage]["status_text"], fg='blue')
             save_gui_state()
             root.after(200, lambda: check_job_status(job_id, stage))
         else:
@@ -189,18 +196,16 @@ def start_snakemake_job(stage="QC"):
     except subprocess.CalledProcessError as cpe:
         stderr = cpe.stderr.strip() if cpe.stderr else str(cpe)
         label.config(text=f"sbatch error: {stderr}", fg='red')
-        button.config(state='normal')  # re-enable on failure
+        button.config(state='normal')
     except Exception as e:
         label.config(text=f"Error starting job: {e}", fg='red')
-        button.config(state='normal')  # re-enable on failure
-
-
+        button.config(state='normal')
 
 # --------------------------
-# Check SLURM job status without blocking GUI
+# Check SLURM job status
 # --------------------------
 def check_job_status(job_id, stage="QC"):
-    global job_running, current_job_id
+    global job_state
 
     button = QC_run if stage=="QC" else filter_run
     progress = QC_progressbar if stage=="QC" else filter_progressbar
@@ -215,20 +220,22 @@ def check_job_status(job_id, stage="QC"):
         return
 
     if job_id in stdout:
-        label.config(text=f"{stage} job {job_id} is still running...", fg='orange')
+        job_state[stage]["running"] = True
+        job_state[stage]["status_text"] = f"{stage} job {job_id} is still running..."
+        label.config(text=job_state[stage]["status_text"], fg='orange')
         root.after(5000, lambda: check_job_status(job_id, stage))
     else:
-        label.config(text=f"{stage} job {job_id} is complete!", fg='green')
+        job_state[stage]["running"] = False
+        job_state[stage]["status_text"] = f"{stage} job {job_id} is complete!"
+        job_state[stage]["progress"] = 100
+        label.config(text=job_state[stage]["status_text"], fg='green')
         progress.stop()
         progress['value'] = 100
-        job_running = False
-        current_job_id = None
+        button.config(state='normal')
         save_gui_state()
         if stage=="QC":
-            next_process()  # enable QC result view buttons
-        check_all_ready()   # Re-check if Run QC can be run again
-        check_filter_ready() # Re-check if Run Filtering can now be enabled
-
+            next_process()
+        check_filter_ready()
 
 # --------------------------
 # Enable QC result buttons
@@ -267,14 +274,14 @@ def patch_snakefile_for_filtering():
                 else:
                     f.write(line)
     except Exception as e:
-        status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
+        QC_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
 def enable_filtering_stage():
     for child in scrollable_frame.winfo_children():
         if isinstance(child, ttk.Button) and child.cget("text") == "Save":
             child.config(state='normal')
     patch_snakefile_for_filtering()
-    status_label.config(text="Filtering stage enabled.", fg='blue')
+    QC_status_label.config(text="Filtering stage enabled.", fg='blue')
 
 # --------------------------
 # GUI state persistence
@@ -293,9 +300,7 @@ def save_gui_state(stage=None):
         "ribo_percent_thresh": ribo_percent_thresh.get(),
         "doublet_thresh": doublet_thresh.get(),
         "min_genes_per_cell": min_genes_per_cell.get(),
-        "current_job_id": current_job_id,
-        "job_running": job_running,
-        "job_stage": stage
+        "job_state": job_state
     }
     try:
         with open(STATE_FILE, "w") as f:
@@ -303,9 +308,8 @@ def save_gui_state(stage=None):
     except Exception as e:
         QC_status_label.config(text=f"Error saving GUI state: {e}", fg='red')
 
-
 def load_gui_state():
-    global current_job_id, job_running
+    global job_state
     if not os.path.exists(STATE_FILE):
         return
     try:
@@ -315,7 +319,7 @@ def load_gui_state():
         QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
         return
 
-    # Restore entry fields
+    # Restore entries
     for entry_name, value in [("data_dir_entry", "data_dir"), 
                               ("metadata_dir_entry", "metadata_table"),
                               ("sample_key_entry", "sample_key"),
@@ -325,44 +329,43 @@ def load_gui_state():
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, state[value])
 
-    # Restore saved flags
     cellranger_saved.set(state.get("cellranger_saved", False))
     metadata_saved.set(state.get("metadata_saved", False))
     sample_key_saved.set(state.get("sample_key_saved", False))
     seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
 
-    # Restore thresholds
     mito_percent_thresh.set(state.get("mito_percent_thresh", ""))
     ribo_percent_thresh.set(state.get("ribo_percent_thresh", ""))
     doublet_thresh.set(state.get("doublet_thresh", ""))
     min_genes_per_cell.set(state.get("min_genes_per_cell", ""))
 
-    # Restore job info
-    current_job_id = state.get("current_job_id", None)
-    job_running = state.get("job_running", False)
-    stage = state.get("job_stage", "QC")
+    job_state = state.get("job_state", job_state)
 
-    # Update buttons based on saved state
     check_all_ready()
     check_filter_ready()
 
-    if current_job_id and job_running:
-        # Disable both run buttons while job is running
-        QC_run.config(state='disabled')
-        filter_run.config(state='disabled')
+    # Restore progress bars and status messages
+    for stage, info in job_state.items():
+        button = QC_run if stage=="QC" else filter_run
+        progress = QC_progressbar if stage=="QC" else filter_progressbar
+        label = QC_status_label if stage=="QC" else filter_status_label
 
-        # Start appropriate progress bar and set label
-        if stage == "QC":
-            QC_progressbar.start()
-            QC_status_label.config(text=f"{stage} job {current_job_id} is still running...", fg='orange')
-        else:
-            filter_progressbar.start()
-            filter_status_label.config(text=f"{stage} job {current_job_id} is still running...", fg='orange')
+        label.config(text=info.get("status_text", label.cget("text")))
+        if info.get("running", False):
+            progress.start()
+            button.config(state='disabled')
+            if info.get("job_id"):
+                root.after(200, lambda j=info.get("job_id"), s=stage: check_job_status(j, s))
+        elif info.get("progress") is not None:
+            progress.stop()
+            progress['value'] = info["progress"]
+            button.config(state='normal')
 
-        # Start polling job status
-        root.after(200, lambda: check_job_status(current_job_id, stage=stage))
-
+# --------------------------
+# Handle window close
+# --------------------------
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
+
 
 # --------------------------
 # Interface Text / Header
