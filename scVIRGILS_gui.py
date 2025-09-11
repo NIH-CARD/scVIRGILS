@@ -20,6 +20,15 @@ current_job_id = None      # ID of a currently-submitted SLURM job (string)
 job_running = False       # Bool - is a job known to be running?
 STATE_FILE = "gui_state.json"
 
+# Track which QC buttons have been clicked
+qc_flags = {
+    "mito": False,
+    "ribo": False,
+    "gene": False,
+    "doublet": False,
+    "genes_by_counts": False
+}
+
 # --------------------------
 # Basic Tk root + layout
 # --------------------------
@@ -75,7 +84,10 @@ sample_key_saved = tk.BooleanVar(value=False)
 seq_batch_key_saved = tk.BooleanVar(value=False)
 
 # An example threshold variable referenced by save/load functions (must exist)
-mito_perc_threshold = tk.StringVar(value="")  # was missing in original code
+mito_percent_thresh = tk.StringVar(value="")
+ribo_percent_thresh = tk.StringVar(value="")
+doublet_thresh = tk.StringVar(value="")
+min_genes_per_cell = tk.StringVar(value="")
 
 # --------------------------
 # Styling
@@ -89,12 +101,17 @@ style.map('TButton',
 # --------------------------
 # Helper: write value to Snakefile
 # --------------------------
-def fill(variable_name, entered_path, status_label=None, flag_var=None):
+def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=False):
     """
     Write or update a line of the form:
         variable_name = "entered_path"
     in a file called 'snakefile' (same directory). If the variable is not present,
     append it.
+
+    
+    Write or update a line in Snakefile.
+    If numeric=True, do NOT wrap the value in quotes (assume int/float).
+    
 
     Parameters:
     - variable_name (str): variable to set inside the snakefile
@@ -102,9 +119,14 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None):
     - status_label (tk.Label or None): UI label to update with messages
     - flag_var (tk.BooleanVar or None): optional boolean Tk variable to set True on success
     """
-    target_file = "snakefile"  # change to "Snakefile" if that's the real filename
-    # Represent the assignment exactly as in Snakefile e.g. foo = "bar"
-    new_line = f'{variable_name} = "{entered_path}"\n'
+   
+    target_file = "snakefile"
+    
+    if numeric:
+        new_line = f'{variable_name} = {entered_path}\n'  # no quotes
+    else:
+        new_line = f'{variable_name} = "{entered_path}"\n'
+
     updated = False
 
     try:
@@ -250,6 +272,49 @@ def next_process():
     open_doublet_qc.config(state='normal')
     open_genes_by_counts_qc.config(state='normal')
 
+def mark_qc_viewed(flag_key):
+    """Mark a QC button as clicked and check if all have been viewed."""
+    qc_flags[flag_key] = True
+    # If all QC figures have been opened, enable Move to Filtering
+    if all(qc_flags.values()):
+        move_to_filtering.config(state='normal')
+
+def patch_snakefile_for_filtering():
+    """
+    Rewrite the Snakefile so that only filtering rules are in rule all.
+    This assumes you have rules named 'filtering' or similar.
+    Adjust the rule list accordingly.
+    """
+    target_file = "snakefile"
+    try:
+        with open(target_file, "r") as f:
+            lines = f.readlines()
+
+        with open(target_file, "w") as f:
+            inside_all = False
+            for line in lines:
+                if line.strip().startswith("rule all"):
+                    f.write("rule all:\n")
+                    f.write("    input:\n")
+                    f.write("        'results/filtering_done.txt'\n")  # <-- adjust to your filtering rule(s)
+                    inside_all = True
+                elif inside_all and line.strip().startswith("input:"):
+                    # Skip the old inputs
+                    continue
+                else:
+                    f.write(line)
+    except Exception as e:
+        status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
+
+def enable_filtering_stage():
+    """Enable threshold entries + patch Snakefile for filtering."""
+    # Enable all Save buttons in the filtering section
+    for child in scrollable_frame.winfo_children():
+        if isinstance(child, ttk.Button) and child.cget("text") == "Save":
+            child.config(state='normal')
+    patch_snakefile_for_filtering()
+    status_label.config(text="Filtering stage enabled.", fg='blue')
+
 # --------------------------
 # GUI State persistence
 # --------------------------
@@ -267,7 +332,10 @@ def save_gui_state():
         "metadata_saved": metadata_saved.get(),
         "sample_key_saved": sample_key_saved.get(),
         "seq_batch_key_saved": seq_batch_key_saved.get(),
-        "mito_perc_threshold": mito_perc_threshold.get(),
+        "mito_percent_thresh": mito_percent_thresh.get(),
+        "ribo_percent_thresh": ribo_percent_thresh.get(),
+        "doublet_thresh": doublet_thresh.get(),
+        "min_genes_per_cell": min_genes_per_cell.get(),
         "current_job_id": current_job_id,
         "job_running": job_running
     }
@@ -323,7 +391,10 @@ def load_gui_state():
     job_running = state.get("job_running", False)
 
     # Set the Tk var for mito threshold rather than overwriting the object
-    mito_perc_threshold.set(state.get("mito_perc_threshold", ""))
+    mito_percent_thresh.set(state.get("mito_percent_thresh", ""))
+    ribo_percent_thresh.set(state.get("ribo_percent_thresh", ""))
+    doublet_thresh.set(state.get("doublet_thresh", ""))
+    min_genes_per_cell.set(state.get("min_genes_per_cell", ""))
 
     # Re-check enabling logic for the Run button
     check_all_ready()
@@ -402,8 +473,22 @@ status_label = tk.Label(scrollable_frame, text="Waiting for inputs...", fg="blac
 status_label.grid(row=7, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
+# Interface Text / Header
+# --------------------------
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Filtering', style='Header.Label')
+header.grid(row=9, column=0, columnspan=4, pady=10, sticky='w')
+
+# --------------------------
 # QC View buttons (disabled until pipeline finishes)
 # --------------------------
+qc_key_map = {
+    "% Mitochondria": "mito",
+    "% Ribosomal": "ribo",
+    "Gene Counts": "gene",
+    "Doublet Score": "doublet",
+    "Genes by Counts": "genes_by_counts"
+}
+
 view_buttons = [
     ("% Mitochondria", 'figures/QC_mito_pct.png'),
     ("% Ribosomal", 'figures/QC_ribo_pct.png'),
@@ -414,11 +499,13 @@ view_buttons = [
 
 for i, (text, path) in enumerate(view_buttons):
     # Each button opens a local file (png) using the default system viewer
-    btn = ttk.Button(scrollable_frame,
-                     text=f"View {text} QC",
-                     command=lambda p=path: webbrowser.open(f"file://{os.path.abspath(p)}"),
-                     state='disabled')
-    btn.grid(row=9+i, column=0, columnspan=2, padx=10, pady=5, sticky='w')
+    btn = ttk.Button(
+        scrollable_frame,
+        text=f"View {text} QC",
+        command=lambda p=path, k=qc_key_map[text]: (webbrowser.open(f"file://{os.path.abspath(p)}"), mark_qc_viewed(k)),
+        state='disabled'
+    )
+    btn.grid(row=10+i, column=0, columnspan=2, padx=10, pady=5, sticky='w')
 
     # Keep names for later enabling
     if i == 0:
@@ -432,41 +519,56 @@ for i, (text, path) in enumerate(view_buttons):
     elif i == 4:
         open_genes_by_counts_qc = btn
 
+
+move_to_filtering = ttk.Button(
+    scrollable_frame,
+    text="Move to Filtering",
+    command=enable_filtering_stage,
+    state='disabled'
+)
+move_to_filtering.grid(row=15, column=0, columnspan=2, pady=15, sticky='w')
+
 # --------------------------
 # Additional threshold entries (second block)
 # --------------------------
-# Start these rows well below the first block to avoid overlapping widget grid indices.
-base_row = 15
+base_row = 16  # adjust if needed so it doesn't overlap other widgets
 
-next_entries = [
-    ("Mitochondria % threshold", "mito_percent_thresh"),
-    ("Ribosomal % threshold", "ribo_percent_thresh"),
-    # add more entries here
+threshold_entries = [
+    ("Mitochondria % threshold (e.g. 20)", "mito_percent_thresh", mito_percent_thresh),
+    ("Ribosomal % threshold (e.g. 20)", "ribo_percent_thresh", ribo_percent_thresh),
+    ("Doublet threshold (e.g. 0.15)", "doublet_thresh", doublet_thresh),
+    ("Minimum genes per cell (e.g. 200)", "min_genes_per_cell", min_genes_per_cell)
 ]
 
-# Keep references to these entry widgets if you need their values later
+# Store references to Entry widgets for later
 entry_widgets = {}
 
-for i, (label_text, var_name) in enumerate(next_entries):
+for i, (label_text, var_name, tk_var) in enumerate(threshold_entries):
     row_idx = base_row + i
     ttk.Label(scrollable_frame, text=label_text, wraplength=400).grid(row=row_idx, column=0, sticky='e', padx=10, pady=5)
 
-    entry = ttk.Entry(scrollable_frame, width=50)
+    entry = ttk.Entry(scrollable_frame, width=50, textvariable=tk_var)
     entry.grid(row=row_idx, column=1, sticky='w')
 
     status = tk.Label(scrollable_frame, text="", anchor='w')
     status.grid(row=row_idx, column=3, sticky='w')
 
-    # Use a version of fill that does not require a flag_var (it is optional now).
-    btn = ttk.Button(scrollable_frame, text='Save', command=lambda v=var_name, e=entry, s=status: fill(v, e.get(), s, None))
+    # Save button disabled initially; will be enabled by Move to Filtering
+    btn = ttk.Button(scrollable_frame,
+                     text='Save',
+                     command=lambda v=var_name, e=entry, s=status: fill(v, e.get(), s, None, numeric=True),
+                     state='disabled')
     btn.grid(row=row_idx, column=2, sticky='w', padx=5)
 
-    # Save reference for later usage
+    # Keep references for later use
     entry_widgets[var_name] = entry
 
 # Example: retrieving a threshold later
 # Note: calling .get() here right away will return what's currently in the entry (probably empty).
 mito_value = entry_widgets["mito_percent_thresh"].get()  # this is fine but will be "" until user types and saves
+ribo_value = entry_widgets["ribo_percent_thresh"].get()
+doublet_value = entry_widgets["doublet_thresh"].get()
+min_genes_per_cell_value = entry_widgets["min_genes_per_cell"].get()
 
 # --------------------------
 # Load any previous GUI state after UI creation
