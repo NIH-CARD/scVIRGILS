@@ -164,14 +164,12 @@ def check_filter_ready():
 # Start a Snakemake job via sbatch
 # --------------------------
 def start_snakemake_job(stage="QC"):
-    """
-    stage: "QC" or "Filtering"
-    Submits the appropriate sbatch script and tracks the job.
-    """
     global current_job_id, job_running
 
     sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake_filtering.sh"
     button = QC_run if stage == "QC" else filter_run
+    progress = QC_progressbar if stage=="QC" else filter_progressbar
+    label = QC_status_label if stage=="QC" else filter_status_label
 
     try:
         result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
@@ -182,19 +180,20 @@ def start_snakemake_job(stage="QC"):
             current_job_id = job_id
             job_running = True
             button.config(state='disabled')
-            progressbar.start()
-            status_label.config(text=f"{stage} job {job_id} submitted.", fg='blue')
-            save_gui_state()
+            progress.start()
+            label.config(text=f"{stage} job {job_id} submitted.", fg='blue')
+            save_gui_state(stage=stage)
             root.after(200, lambda: check_job_status(job_id, stage))
         else:
-            status_label.config(text=f"No job ID found in sbatch output: {stdout}", fg='red')
+            label.config(text=f"No job ID found in sbatch output: {stdout}", fg='red')
     except subprocess.CalledProcessError as cpe:
         stderr = cpe.stderr.strip() if cpe.stderr else str(cpe)
-        status_label.config(text=f"sbatch error: {stderr}", fg='red')
+        label.config(text=f"sbatch error: {stderr}", fg='red')
         button.config(state='normal')  # re-enable on failure
     except Exception as e:
-        status_label.config(text=f"Error starting job: {e}", fg='red')
+        label.config(text=f"Error starting job: {e}", fg='red')
         button.config(state='normal')  # re-enable on failure
+
 
 
 # --------------------------
@@ -204,22 +203,24 @@ def check_job_status(job_id, stage="QC"):
     global job_running, current_job_id
 
     button = QC_run if stage=="QC" else filter_run
+    progress = QC_progressbar if stage=="QC" else filter_progressbar
+    label = QC_status_label if stage=="QC" else filter_status_label
 
     try:
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
         stdout = result.stdout
     except Exception as e:
-        status_label.config(text=f"Error checking job status: {e}", fg='red')
+        label.config(text=f"Error checking job status: {e}", fg='red')
         root.after(5000, lambda: check_job_status(job_id, stage))
         return
 
     if job_id in stdout:
-        status_label.config(text=f"{stage} job {job_id} is still running...", fg='orange')
+        label.config(text=f"{stage} job {job_id} is still running...", fg='orange')
         root.after(5000, lambda: check_job_status(job_id, stage))
     else:
-        status_label.config(text=f"{stage} job {job_id} is complete!", fg='green')
-        progressbar.stop()
-        progressbar['value'] = 100
+        label.config(text=f"{stage} job {job_id} is complete!", fg='green')
+        progress.stop()
+        progress['value'] = 100
         job_running = False
         current_job_id = None
         save_gui_state()
@@ -278,7 +279,7 @@ def enable_filtering_stage():
 # --------------------------
 # GUI state persistence
 # --------------------------
-def save_gui_state():
+def save_gui_state(stage=None):
     state = {
         "data_dir": data_dir_entry.get() if 'data_dir_entry' in globals() else "",
         "metadata_table": metadata_dir_entry.get() if 'metadata_dir_entry' in globals() else "",
@@ -293,7 +294,9 @@ def save_gui_state():
         "doublet_thresh": doublet_thresh.get(),
         "min_genes_per_cell": min_genes_per_cell.get(),
         "current_job_id": current_job_id,
-        "job_running": job_running
+        "job_running": job_running,
+        "job_stage": stage  # Save QC or Filtering
+
     }
     try:
         with open(STATE_FILE, "w") as f:
@@ -343,8 +346,16 @@ def load_gui_state():
     if current_job_id and job_running:
         QC_run.config(state='disabled')
         filter_run.config(state='disabled')
-        progressbar.start()
-        root.after(200, lambda: check_job_status(current_job_id))
+
+        # Determine which progress bar to start based on saved stage
+        stage = state.get("job_stage", "QC")
+        if stage == "QC":
+            QC_progressbar.start()
+        else:
+            filter_progressbar.start()
+
+        # Start checking job status with the correct stage
+        root.after(200, lambda: check_job_status(current_job_id, stage=stage)) 
 
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
@@ -406,11 +417,12 @@ for i, (label_text, var_name, flag_var) in enumerate(entries):
 QC_run = ttk.Button(scrollable_frame, text='Run QC!', command=start_snakemake_job, state='disabled')
 QC_run.grid(row=6, column=3, pady=10, padx=10, sticky='w')
 
-progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
-progressbar.grid(row=6, column=0, columnspan=3, padx=10, sticky='ew')
+QC_progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+QC_progressbar.grid(row=6, column=0, columnspan=3, padx=10, sticky='ew')
 
-status_label = tk.Label(scrollable_frame, text="Waiting for inputs...", fg="black")
-status_label.grid(row=7, column=0, columnspan=4, pady=10, sticky='w')
+QC_status_label = tk.Label(scrollable_frame, text="Waiting for QC inputs...", fg="black")
+QC_status_label.grid(row=7, column=0, columnspan=4, pady=10, sticky='w')
+
 
 # --------------------------
 # Interface Text / Header
@@ -518,11 +530,11 @@ min_genes_per_cell_value = entry_widgets["min_genes_per_cell"].get()
 filter_run = ttk.Button(scrollable_frame, text='Run Filtering!', command=lambda: start_snakemake_job(stage="Filtering"), state='disabled')
 filter_run.grid(row=20, column=3, pady=10, padx=10, sticky='w')
 
-progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
-progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
+filter_progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+filter_progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
 
-status_label = tk.Label(scrollable_frame, text="Waiting for inputs...", fg="black")
-status_label.grid(row=20, column=0, columnspan=4, pady=10, sticky='w')
+filter_status_label = tk.Label(scrollable_frame, text="Waiting for Filtering inputs...", fg="black")
+filter_status_label.grid(row=21, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
 # Load any previous GUI state after UI creation
