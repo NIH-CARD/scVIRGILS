@@ -143,17 +143,35 @@ def check_all_ready():
     else:
         QC_run.config(state='disabled')
 
+def check_filter_ready():
+    """
+    Enable the 'Run Filtering' button only when all threshold entries are saved and non-empty,
+    and no filtering job is currently running.
+    """
+    global job_running
+    all_filled = all([
+        mito_percent_thresh.get(),
+        ribo_percent_thresh.get(),
+        doublet_thresh.get(),
+        min_genes_per_cell.get()
+    ])
+    if all_filled and not job_running:
+        filter_run.config(state='normal')
+    else:
+        filter_run.config(state='disabled')
+
 # --------------------------
 # Start a Snakemake job via sbatch
 # --------------------------
 def start_snakemake_job(stage="QC"):
     """
-    Submits the Snakemake job using sbatch.
-    stage: 'QC' or 'Filtering'
+    stage: "QC" or "Filtering"
+    Submits the appropriate sbatch script and tracks the job.
     """
     global current_job_id, job_running
 
-    sbatch_script = "snakemake.sh" if stage=="QC" else "snakemake_filtering.sh"
+    sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake_filtering.sh"
+    button = QC_run if stage == "QC" else filter_run
 
     try:
         result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
@@ -163,45 +181,53 @@ def start_snakemake_job(stage="QC"):
             job_id = match.group(1)
             current_job_id = job_id
             job_running = True
-            QC_run.config(state='disabled')
-            filter_run.config(state='disabled')
-            status_label.config(text=f"Submitted job {job_id}", fg='blue')
+            button.config(state='disabled')
             progressbar.start()
+            status_label.config(text=f"{stage} job {job_id} submitted.", fg='blue')
             save_gui_state()
-            root.after(200, lambda: check_job_status(job_id))
+            root.after(200, lambda: check_job_status(job_id, stage))
         else:
             status_label.config(text=f"No job ID found in sbatch output: {stdout}", fg='red')
     except subprocess.CalledProcessError as cpe:
         stderr = cpe.stderr.strip() if cpe.stderr else str(cpe)
         status_label.config(text=f"sbatch error: {stderr}", fg='red')
+        button.config(state='normal')  # re-enable on failure
     except Exception as e:
         status_label.config(text=f"Error starting job: {e}", fg='red')
+        button.config(state='normal')  # re-enable on failure
+
 
 # --------------------------
 # Check SLURM job status without blocking GUI
 # --------------------------
-def check_job_status(job_id):
+def check_job_status(job_id, stage="QC"):
     global job_running, current_job_id
+
+    button = QC_run if stage=="QC" else filter_run
 
     try:
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
+        stdout = result.stdout
     except Exception as e:
         status_label.config(text=f"Error checking job status: {e}", fg='red')
-        root.after(5000, lambda: check_job_status(job_id))
+        root.after(5000, lambda: check_job_status(job_id, stage))
         return
 
-    stdout = result.stdout
     if job_id in stdout:
-        status_label.config(text=f"Job {job_id} is still running...", fg='orange')
-        root.after(5000, lambda: check_job_status(job_id))
+        status_label.config(text=f"{stage} job {job_id} is still running...", fg='orange')
+        root.after(5000, lambda: check_job_status(job_id, stage))
     else:
-        status_label.config(text=f"Job {job_id} is complete!", fg='green')
+        status_label.config(text=f"{stage} job {job_id} is complete!", fg='green')
         progressbar.stop()
         progressbar['value'] = 100
         job_running = False
         current_job_id = None
         save_gui_state()
-        next_process()
+        if stage=="QC":
+            next_process()  # enable QC result view buttons
+        check_all_ready()   # Re-check if Run QC can be run again
+        check_filter_ready() # Re-check if Run Filtering can now be enabled
+
 
 # --------------------------
 # Enable QC result buttons
@@ -468,10 +494,12 @@ for i, (label_text, var_name, tk_var) in enumerate(threshold_entries):
     status.grid(row=row_idx, column=3, sticky='w')
 
     # Save button disabled initially; will be enabled by Move to Filtering
-    btn = ttk.Button(scrollable_frame,
-                     text='Save',
-                     command=lambda v=var_name, e=entry, s=status: fill(v, e.get(), s, None, numeric=True),
-                     state='disabled')
+    btn = ttk.Button(
+        scrollable_frame,
+        text='Save',
+        command=lambda v=var_name, e=entry, s=status: (fill(v, e.get(), s, None, numeric=True), check_filter_ready()),
+        state='disabled'
+    )
     btn.grid(row=row_idx, column=2, sticky='w', padx=5)
 
     # Keep references for later use
