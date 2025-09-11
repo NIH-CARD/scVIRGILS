@@ -182,7 +182,7 @@ def start_snakemake_job(stage="QC"):
             button.config(state='disabled')
             progress.start()
             label.config(text=f"{stage} job {job_id} submitted.", fg='blue')
-            save_gui_state(stage=stage)
+            save_gui_state()
             root.after(200, lambda: check_job_status(job_id, stage))
         else:
             label.config(text=f"No job ID found in sbatch output: {stdout}", fg='red')
@@ -295,14 +295,14 @@ def save_gui_state(stage=None):
         "min_genes_per_cell": min_genes_per_cell.get(),
         "current_job_id": current_job_id,
         "job_running": job_running,
-        "job_stage": stage  # Save QC or Filtering
-
+        "job_stage": stage
     }
     try:
         with open(STATE_FILE, "w") as f:
             json.dump(state, f)
     except Exception as e:
-        status_label.config(text=f"Error saving GUI state: {e}", fg='red')
+        QC_status_label.config(text=f"Error saving GUI state: {e}", fg='red')
+
 
 def load_gui_state():
     global current_job_id, job_running
@@ -312,50 +312,55 @@ def load_gui_state():
         with open(STATE_FILE, "r") as f:
             state = json.load(f)
     except Exception as e:
-        status_label.config(text=f"Error loading GUI state: {e}", fg='red')
+        QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
         return
 
-    if 'data_dir_entry' in globals():
-        data_dir_entry.delete(0, tk.END)
-        data_dir_entry.insert(0, state.get("data_dir", ""))
-    if 'metadata_dir_entry' in globals():
-        metadata_dir_entry.delete(0, tk.END)
-        metadata_dir_entry.insert(0, state.get("metadata_table", ""))
-    if 'sample_key_entry' in globals():
-        sample_key_entry.delete(0, tk.END)
-        sample_key_entry.insert(0, state.get("sample_key", ""))
-    if 'seq_batch_entry' in globals():
-        seq_batch_entry.delete(0, tk.END)
-        seq_batch_entry.insert(0, state.get("seq_batch_key", ""))
+    # Restore entry fields
+    for entry_name, value in [("data_dir_entry", "data_dir"), 
+                              ("metadata_dir_entry", "metadata_table"),
+                              ("sample_key_entry", "sample_key"),
+                              ("seq_batch_entry", "seq_batch_key")]:
+        if entry_name in globals() and state.get(value) is not None:
+            entry_widget = globals()[entry_name]
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, state[value])
 
+    # Restore saved flags
     cellranger_saved.set(state.get("cellranger_saved", False))
     metadata_saved.set(state.get("metadata_saved", False))
     sample_key_saved.set(state.get("sample_key_saved", False))
     seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
 
-    current_job_id = state.get("current_job_id", None)
-    job_running = state.get("job_running", False)
-
+    # Restore thresholds
     mito_percent_thresh.set(state.get("mito_percent_thresh", ""))
     ribo_percent_thresh.set(state.get("ribo_percent_thresh", ""))
     doublet_thresh.set(state.get("doublet_thresh", ""))
     min_genes_per_cell.set(state.get("min_genes_per_cell", ""))
 
+    # Restore job info
+    current_job_id = state.get("current_job_id", None)
+    job_running = state.get("job_running", False)
+    stage = state.get("job_stage", "QC")
+
+    # Update buttons based on saved state
     check_all_ready()
+    check_filter_ready()
 
     if current_job_id and job_running:
+        # Disable both run buttons while job is running
         QC_run.config(state='disabled')
         filter_run.config(state='disabled')
 
-        # Determine which progress bar to start based on saved stage
-        stage = state.get("job_stage", "QC")
+        # Start appropriate progress bar and set label
         if stage == "QC":
             QC_progressbar.start()
+            QC_status_label.config(text=f"{stage} job {current_job_id} is still running...", fg='orange')
         else:
             filter_progressbar.start()
+            filter_status_label.config(text=f"{stage} job {current_job_id} is still running...", fg='orange')
 
-        # Start checking job status with the correct stage
-        root.after(200, lambda: check_job_status(current_job_id, stage=stage)) 
+        # Start polling job status
+        root.after(200, lambda: check_job_status(current_job_id, stage=stage))
 
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
