@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-scVIRGILS - Tkinter GUI for running a Snakemake QC pipeline
-This file is a debugged, heavily commented version of the user's original script.
+scVIRGILS - Tkinter GUI for running a Snakemake QC and Filtering pipeline
 """
 
 import tkinter as tk
@@ -16,8 +15,8 @@ import os
 # --------------------------
 # Globals and persistent file
 # --------------------------
-current_job_id = None      # ID of a currently-submitted SLURM job (string)
-job_running = False       # Bool - is a job known to be running?
+current_job_id = None
+job_running = False
 STATE_FILE = "gui_state.json"
 
 # Track which QC buttons have been clicked
@@ -37,8 +36,6 @@ root.geometry('1200x700')
 root.minsize(900, 600)
 root.title('scVIRGILS')
 
-# Create a scrollable canvas frame pattern:
-# container -> canvas -> scrollable_frame (a frame inside canvas)
 container = tk.Frame(root)
 container.pack(fill=tk.BOTH, expand=True)
 
@@ -49,25 +46,17 @@ scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 canvas.configure(yscrollcommand=scrollbar.set)
 
-# The actual frame where widgets live
 scrollable_frame = tk.Frame(canvas)
 scrollable_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 
 # ------------ scrolling handlers ------------
 def _on_mousewheel(event):
-    """
-    Generic mousewheel scrolling. Note: event.delta behaves differently on Mac/Linux.
-    This handler keeps the behaviour similar to Windows; you can add platform checks
-    if you want separate handling for Linux (Button-4/5) or Mac.
-    """
     canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 def on_frame_configure(event):
-    """Update the scrollregion when the scrollable_frame changes size."""
     canvas.configure(scrollregion=canvas.bbox("all"))
 
 def on_canvas_configure(event):
-    """Make the inner window the same width as the canvas (responsive)."""
     canvas.itemconfig(scrollable_window, width=event.width)
 
 scrollable_frame.bind("<Configure>", on_frame_configure)
@@ -77,13 +66,11 @@ root.bind_all("<MouseWheel>", _on_mousewheel)
 # --------------------------
 # Input state variables
 # --------------------------
-# These booleans track whether the user has saved the 4 required inputs.
 cellranger_saved = tk.BooleanVar(value=False)
 metadata_saved = tk.BooleanVar(value=False)
 sample_key_saved = tk.BooleanVar(value=False)
 seq_batch_key_saved = tk.BooleanVar(value=False)
 
-# An example threshold variable referenced by save/load functions (must exist)
 mito_percent_thresh = tk.StringVar(value="")
 ribo_percent_thresh = tk.StringVar(value="")
 doublet_thresh = tk.StringVar(value="")
@@ -102,28 +89,9 @@ style.map('TButton',
 # Helper: write value to Snakefile
 # --------------------------
 def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=False):
-    """
-    Write or update a line of the form:
-        variable_name = "entered_path"
-    in a file called 'snakefile' (same directory). If the variable is not present,
-    append it.
-
-    
-    Write or update a line in Snakefile.
-    If numeric=True, do NOT wrap the value in quotes (assume int/float).
-    
-
-    Parameters:
-    - variable_name (str): variable to set inside the snakefile
-    - entered_path (str): the string value to write
-    - status_label (tk.Label or None): UI label to update with messages
-    - flag_var (tk.BooleanVar or None): optional boolean Tk variable to set True on success
-    """
-   
     target_file = "snakefile"
-    
     if numeric:
-        new_line = f'{variable_name} = {entered_path}\n'  # no quotes
+        new_line = f'{variable_name} = {entered_path}\n'
     else:
         new_line = f'{variable_name} = "{entered_path}"\n'
 
@@ -133,50 +101,39 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
         with open(target_file, 'r') as file:
             lines = file.readlines()
     except FileNotFoundError:
-        # If the Snakefile doesn't exist, inform the user via status_label (if provided)
-        if status_label is not None:
+        if status_label:
             status_label.config(text=f"Error: File '{target_file}' not found.", fg='red')
         return
 
-    # Write back updating or appending the variable assignment
     try:
         with open(target_file, 'w') as file:
             for line in lines:
-                # Match the variable assignment at start of a stripped line
                 if line.strip().startswith(f'{variable_name} ='):
                     file.write(new_line)
                     updated = True
                 else:
                     file.write(line)
             if not updated:
-                # If variable wasn't in file, append it at the end
                 file.write(new_line)
     except Exception as e:
-        if status_label is not None:
+        if status_label:
             status_label.config(text=f"Error writing '{target_file}': {e}", fg='red')
         return
 
-    # Update UI + flag if present
-    if status_label is not None:
+    if status_label:
         status_label.config(text=f"{variable_name} saved!", fg='green')
-    if flag_var is not None:
+    if flag_var:
         try:
             flag_var.set(True)
         except Exception:
-            # If flag_var isn't a Tk variable, ignore silently (or log)
             pass
 
-    # Reevaluate whether all required inputs are present so we can enable "Run QC!"
     check_all_ready()
 
 # --------------------------
 # Enable/Disable Run button based on readiness
 # --------------------------
 def check_all_ready():
-    """
-    Enable QC_run only when all four input flags are True and no job is running.
-    Note: job_running is a global boolean that is updated by job submission / status checks.
-    """
     global job_running
     if cellranger_saved.get() and metadata_saved.get() and sample_key_saved.get() and seq_batch_key_saved.get():
         if not job_running:
@@ -189,36 +146,32 @@ def check_all_ready():
 # --------------------------
 # Start a Snakemake job via sbatch
 # --------------------------
-def start_snakemake_job():
+def start_snakemake_job(stage="QC"):
     """
-    Submits the 'snakemake.sh' script using sbatch. Parses the returned job ID and
-    starts periodic status checks. All subprocess calls deliberately run with text=True
-    so output is captured as strings.
-
-    Note: sbatch stdout typically contains a job id like "Submitted batch job 12345".
-    We attempt to extract digits from stdout.
+    Submits the Snakemake job using sbatch.
+    stage: 'QC' or 'Filtering'
     """
     global current_job_id, job_running
 
+    sbatch_script = "snakemake.sh" if stage=="QC" else "snakemake_filtering.sh"
+
     try:
-        result = subprocess.run(['sbatch', 'snakemake.sh'], capture_output=True, check=True, text=True)
+        result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
         stdout = result.stdout.strip()
-        # Extract the first contiguous string of digits as the job id
         match = re.search(r'(\d+)', stdout)
         if match:
             job_id = match.group(1)
             current_job_id = job_id
             job_running = True
             QC_run.config(state='disabled')
+            filter_run.config(state='disabled')
             status_label.config(text=f"Submitted job {job_id}", fg='blue')
             progressbar.start()
             save_gui_state()
-            # Schedule the first check shortly after returning to the event loop to avoid blocking
             root.after(200, lambda: check_job_status(job_id))
         else:
             status_label.config(text=f"No job ID found in sbatch output: {stdout}", fg='red')
     except subprocess.CalledProcessError as cpe:
-        # If sbatch returns a non-zero exit code, show stderr for diagnosis
         stderr = cpe.stderr.strip() if cpe.stderr else str(cpe)
         status_label.config(text=f"sbatch error: {stderr}", fg='red')
     except Exception as e:
@@ -228,31 +181,20 @@ def start_snakemake_job():
 # Check SLURM job status without blocking GUI
 # --------------------------
 def check_job_status(job_id):
-    """
-    Uses squeue -j <job_id> to check for job presence. If squeue returns the job id,
-    reschedule another check. If the job is not in squeue output, we assume it completed.
-
-    Note: This function performs subprocess.run(...) which is a blocking call but is
-    executed from the Tk event loop via root.after to avoid freezing the UI for long.
-    """
     global job_running, current_job_id
 
     try:
-        # This call is short but could block if Slurm unresponsive; keeping it simple.
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
     except Exception as e:
         status_label.config(text=f"Error checking job status: {e}", fg='red')
-        # try again later
         root.after(5000, lambda: check_job_status(job_id))
         return
 
     stdout = result.stdout
     if job_id in stdout:
-        # Still running -> check again in 5 seconds
         status_label.config(text=f"Job {job_id} is still running...", fg='orange')
         root.after(5000, lambda: check_job_status(job_id))
     else:
-        # Job no longer in queue; mark complete
         status_label.config(text=f"Job {job_id} is complete!", fg='green')
         progressbar.stop()
         progressbar['value'] = 100
@@ -262,10 +204,9 @@ def check_job_status(job_id):
         next_process()
 
 # --------------------------
-# Enable the next set of QC buttons after run completes
+# Enable QC result buttons
 # --------------------------
 def next_process():
-    """Enable the QC result view buttons when pipeline is finished."""
     open_mito_qc.config(state='normal')
     open_ribo_qc.config(state='normal')
     open_gene_qc.config(state='normal')
@@ -273,18 +214,14 @@ def next_process():
     open_genes_by_counts_qc.config(state='normal')
 
 def mark_qc_viewed(flag_key):
-    """Mark a QC button as clicked and check if all have been viewed."""
     qc_flags[flag_key] = True
-    # If all QC figures have been opened, enable Move to Filtering
     if all(qc_flags.values()):
         move_to_filtering.config(state='normal')
 
+# --------------------------
+# Patch Snakefile for filtering
+# --------------------------
 def patch_snakefile_for_filtering():
-    """
-    Rewrite the Snakefile so that only filtering rules are in rule all.
-    This assumes you have rules named 'filtering' or similar.
-    Adjust the rule list accordingly.
-    """
     target_file = "snakefile"
     try:
         with open(target_file, "r") as f:
@@ -296,10 +233,9 @@ def patch_snakefile_for_filtering():
                 if line.strip().startswith("rule all"):
                     f.write("rule all:\n")
                     f.write("    input:\n")
-                    f.write("        'results/filtering_done.txt'\n")  # <-- adjust to your filtering rule(s)
+                    f.write("        'results/filtering_done.txt'\n")
                     inside_all = True
                 elif inside_all and line.strip().startswith("input:"):
-                    # Skip the old inputs
                     continue
                 else:
                     f.write(line)
@@ -307,8 +243,6 @@ def patch_snakefile_for_filtering():
         status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
 def enable_filtering_stage():
-    """Enable threshold entries + patch Snakefile for filtering."""
-    # Enable all Save buttons in the filtering section
     for child in scrollable_frame.winfo_children():
         if isinstance(child, ttk.Button) and child.cget("text") == "Save":
             child.config(state='normal')
@@ -316,13 +250,9 @@ def enable_filtering_stage():
     status_label.config(text="Filtering stage enabled.", fg='blue')
 
 # --------------------------
-# GUI State persistence
+# GUI state persistence
 # --------------------------
 def save_gui_state():
-    """
-    Save selected GUI values into a JSON file so GUI state can be restored later.
-    Save only serializable values (strings, booleans). Do not attempt to save Tk objects.
-    """
     state = {
         "data_dir": data_dir_entry.get() if 'data_dir_entry' in globals() else "",
         "metadata_table": metadata_dir_entry.get() if 'metadata_dir_entry' in globals() else "",
@@ -343,19 +273,12 @@ def save_gui_state():
         with open(STATE_FILE, "w") as f:
             json.dump(state, f)
     except Exception as e:
-        # If saving fails, surface to status_label but continue
         status_label.config(text=f"Error saving GUI state: {e}", fg='red')
 
 def load_gui_state():
-    """
-    Load GUI state from disk (if present). This should be called after all Entry widgets
-    and corresponding Tk variables have been created, otherwise insert/set calls will fail.
-    """
     global current_job_id, job_running
-
     if not os.path.exists(STATE_FILE):
         return
-
     try:
         with open(STATE_FILE, "r") as f:
             state = json.load(f)
@@ -363,49 +286,40 @@ def load_gui_state():
         status_label.config(text=f"Error loading GUI state: {e}", fg='red')
         return
 
-    # Populate entry widgets only if they exist
     if 'data_dir_entry' in globals():
         data_dir_entry.delete(0, tk.END)
         data_dir_entry.insert(0, state.get("data_dir", ""))
-
     if 'metadata_dir_entry' in globals():
         metadata_dir_entry.delete(0, tk.END)
         metadata_dir_entry.insert(0, state.get("metadata_table", ""))
-
     if 'sample_key_entry' in globals():
         sample_key_entry.delete(0, tk.END)
         sample_key_entry.insert(0, state.get("sample_key", ""))
-
     if 'seq_batch_entry' in globals():
         seq_batch_entry.delete(0, tk.END)
         seq_batch_entry.insert(0, state.get("seq_batch_key", ""))
 
-    # Restore boolean flags
     cellranger_saved.set(state.get("cellranger_saved", False))
     metadata_saved.set(state.get("metadata_saved", False))
     sample_key_saved.set(state.get("sample_key_saved", False))
     seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
 
-    # Restore job metadata
     current_job_id = state.get("current_job_id", None)
     job_running = state.get("job_running", False)
 
-    # Set the Tk var for mito threshold rather than overwriting the object
     mito_percent_thresh.set(state.get("mito_percent_thresh", ""))
     ribo_percent_thresh.set(state.get("ribo_percent_thresh", ""))
     doublet_thresh.set(state.get("doublet_thresh", ""))
     min_genes_per_cell.set(state.get("min_genes_per_cell", ""))
 
-    # Re-check enabling logic for the Run button
     check_all_ready()
 
-    # If a job was running when we saved, resume checking status (non-blocking)
     if current_job_id and job_running:
         QC_run.config(state='disabled')
+        filter_run.config(state='disabled')
         progressbar.start()
         root.after(200, lambda: check_job_status(current_job_id))
 
-# When the window is closed, save state then destroy window
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
 # --------------------------
@@ -569,6 +483,18 @@ mito_value = entry_widgets["mito_percent_thresh"].get()  # this is fine but will
 ribo_value = entry_widgets["ribo_percent_thresh"].get()
 doublet_value = entry_widgets["doublet_thresh"].get()
 min_genes_per_cell_value = entry_widgets["min_genes_per_cell"].get()
+
+# --------------------------
+# Run + Progress + Status
+# --------------------------
+filter_run = ttk.Button(scrollable_frame, text='Run Filtering!', command=lambda: start_snakemake_job(stage="Filtering"), state='disabled')
+filter_run.grid(row=20, column=3, pady=10, padx=10, sticky='w')
+
+progressbar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
+
+status_label = tk.Label(scrollable_frame, text="Waiting for inputs...", fg="black")
+status_label.grid(row=20, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
 # Load any previous GUI state after UI creation
