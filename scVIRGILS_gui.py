@@ -168,7 +168,7 @@ def check_filter_ready():
 def start_snakemake_job(stage="QC"):
     global job_state
 
-    sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake_filtering.sh"
+    sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake.sh"
     button = QC_run if stage == "QC" else filter_run
     progress = QC_progressbar if stage=="QC" else filter_progressbar
     label = QC_status_label if stage=="QC" else filter_status_label
