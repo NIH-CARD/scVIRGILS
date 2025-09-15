@@ -96,12 +96,20 @@ style.map('TButton',
 # --------------------------
 def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=False):
     target_file = "snakefile"
+
+    # Validate numeric inputs
     if numeric:
+        try:
+            float(entered_path)  # allow ints and floats
+        except ValueError:
+            if status_label:
+                status_label.config(text="Not a valid numeric entry", fg='red')
+            return
         new_line = f'{variable_name} = {entered_path}\n'
     else:
         new_line = f'{variable_name} = "{entered_path}"\n'
 
-    updated = False
+    replaced_once = False
 
     try:
         with open(target_file, 'r') as file:
@@ -114,12 +122,14 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
     try:
         with open(target_file, 'w') as file:
             for line in lines:
-                if line.strip().startswith(f'{variable_name} ='):
-                    file.write(new_line)
-                    updated = True
+                if not replaced_once and line.strip().startswith(f'{variable_name} ='):
+                    file.write(new_line)   # replace only the first match
+                    replaced_once = True
                 else:
                     file.write(line)
-            if not updated:
+
+            if not replaced_once:
+                # Append if never found
                 file.write(new_line)
     except Exception as e:
         if status_label:
@@ -264,24 +274,26 @@ def patch_snakefile_for_filtering():
         with open(target_file, "w") as f:
             inside_all = False
             for line in lines:
+                # Detect start of "rule all"
                 if line.strip().startswith("rule all"):
                     f.write("rule all:\n")
                     f.write("    input:\n")
-                    f.write("        'results/filtering_done.txt'\n")
+                    f.write("        rna_anndata=expand(\n")
+                    f.write("            work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad',\n")
+                    f.write("            zip,\n")
+                    f.write("            batch=batches,\n")
+                    f.write("            sample=samples\n")
+                    f.write("        ),\n")
                     inside_all = True
-                elif inside_all and line.strip().startswith("input:"):
+                # Skip old input block until we exit
+                elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
                     continue
                 else:
                     f.write(line)
+                    inside_all = False  # Exit once we hit non-input content
     except Exception as e:
         QC_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
-def enable_filtering_stage():
-    for child in scrollable_frame.winfo_children():
-        if isinstance(child, ttk.Button) and child.cget("text") == "Save":
-            child.config(state='normal')
-    patch_snakefile_for_filtering()
-    QC_status_label.config(text="Filtering stage enabled.", fg='blue')
 
 # --------------------------
 # GUI state persistence
