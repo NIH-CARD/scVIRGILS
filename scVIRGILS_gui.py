@@ -104,6 +104,7 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
         except ValueError:
             if status_label:
                 status_label.config(text="Not a valid numeric entry", fg='red')
+            check_filter_ready()  # disable Run Filtering if invalid
             return
         new_line = f'{variable_name} = {entered_path}\n'
     else:
@@ -145,6 +146,7 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
             pass
 
     check_all_ready()
+    check_filter_ready()
 
 # --------------------------
 # Enable/Disable Run button based on readiness
@@ -167,7 +169,15 @@ def check_filter_ready():
         doublet_thresh.get(),
         min_genes_per_cell.get()
     ])
-    if all_filled and not job_running:
+    # If any value is not a valid number, disable button
+    numeric_invalid = False
+    for val in [mito_percent_thresh.get(), ribo_percent_thresh.get(), doublet_thresh.get(), min_genes_per_cell.get()]:
+        try:
+            float(val)
+        except ValueError:
+            numeric_invalid = True
+            break
+    if all_filled and not numeric_invalid and not job_running:
         filter_run.config(state='normal')
     else:
         filter_run.config(state='disabled')
@@ -210,6 +220,16 @@ def start_snakemake_job(stage="QC"):
     except Exception as e:
         label.config(text=f"Error starting job: {e}", fg='red')
         button.config(state='normal')
+
+# --------------------------
+# Enable filtering stage
+# --------------------------
+def enable_filtering_stage():
+    # Enable only the filtering Save buttons
+    for btn in save_buttons.values():
+        btn.config(state='normal')
+    patch_snakefile_for_filtering()
+    QC_status_label.config(text="Filtering stage enabled.", fg='blue')
 
 # --------------------------
 # Check SLURM job status
@@ -274,7 +294,6 @@ def patch_snakefile_for_filtering():
         with open(target_file, "w") as f:
             inside_all = False
             for line in lines:
-                # Detect start of "rule all"
                 if line.strip().startswith("rule all"):
                     f.write("rule all:\n")
                     f.write("    input:\n")
@@ -285,12 +304,11 @@ def patch_snakefile_for_filtering():
                     f.write("            sample=samples\n")
                     f.write("        ),\n")
                     inside_all = True
-                # Skip old input block until we exit
                 elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
                     continue
                 else:
                     f.write(line)
-                    inside_all = False  # Exit once we hit non-input content
+                    inside_all = False
     except Exception as e:
         QC_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
@@ -331,7 +349,6 @@ def load_gui_state():
         QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
         return
 
-    # Restore entries
     for entry_name, value in [("data_dir_entry", "data_dir"), 
                               ("metadata_dir_entry", "metadata_table"),
                               ("sample_key_entry", "sample_key"),
@@ -378,7 +395,6 @@ def load_gui_state():
 # --------------------------
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
-
 # --------------------------
 # Interface Text / Header
 # --------------------------
@@ -392,12 +408,10 @@ try:
     img = Image.open("images/VIRGIL.png")
     img = img.resize((150, 150))
     photo = ImageTk.PhotoImage(img)
-    # Keep a reference to PhotoImage to avoid garbage collection (tk quirk)
     logo_label = tk.Label(scrollable_frame, image=photo)
     logo_label.image = photo
     logo_label.grid(row=0, column=4, padx=10, sticky='e')
 except Exception:
-    # Fail silently if image missing; the GUI still works
     pass
 
 # --------------------------
@@ -410,18 +424,15 @@ entries = [
     ("Seq Batch Key (e.g. sequencing_round)", "seq_batch_key", seq_batch_key_saved)
 ]
 
-# Keep references to specific entries by name so load/save can use them
 for i, (label_text, var_name, flag_var) in enumerate(entries):
     ttk.Label(scrollable_frame, text=label_text, wraplength=400).grid(row=i+1, column=0, sticky='e', padx=10, pady=5)
     entry = ttk.Entry(scrollable_frame, width=50)
     entry.grid(row=i+1, column=1, sticky='w')
     status = tk.Label(scrollable_frame, text="", anchor='w')
     status.grid(row=i+1, column=3, sticky='w')
-    # Use default arguments in lambda to capture the current objects
     btn = ttk.Button(scrollable_frame, text='Save', command=lambda v=var_name, e=entry, s=status, f=flag_var: fill(v, e.get(), s, f))
     btn.grid(row=i+1, column=2, sticky='w', padx=5)
 
-    # Store references to the named entries in globals (used by save/load)
     if var_name == "data_dir":
         data_dir_entry = entry
     elif var_name == "metadata_table":
@@ -432,7 +443,7 @@ for i, (label_text, var_name, flag_var) in enumerate(entries):
         seq_batch_entry = entry
 
 # --------------------------
-# Run + Progress + Status
+# Run + Progress + Status (QC)
 # --------------------------
 QC_run = ttk.Button(scrollable_frame, text='Run QC!', command=start_snakemake_job, state='disabled')
 QC_run.grid(row=6, column=3, pady=10, padx=10, sticky='w')
@@ -443,15 +454,14 @@ QC_progressbar.grid(row=6, column=0, columnspan=3, padx=10, sticky='ew')
 QC_status_label = tk.Label(scrollable_frame, text="Waiting for QC inputs...", fg="black")
 QC_status_label.grid(row=7, column=0, columnspan=4, pady=10, sticky='w')
 
-
 # --------------------------
-# Interface Text / Header
+# Interface Text / Header (Filtering)
 # --------------------------
 header = ttk.Label(scrollable_frame, text='scVIRGILS - Filtering', style='Header.Label')
 header.grid(row=9, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
-# QC View buttons (disabled until pipeline finishes)
+# QC View buttons
 # --------------------------
 qc_key_map = {
     "% Mitochondria": "mito",
@@ -470,7 +480,6 @@ view_buttons = [
 ]
 
 for i, (text, path) in enumerate(view_buttons):
-    # Each button opens a local file (png) using the default system viewer
     btn = ttk.Button(
         scrollable_frame,
         text=f"View {text} QC",
@@ -479,7 +488,6 @@ for i, (text, path) in enumerate(view_buttons):
     )
     btn.grid(row=10+i, column=0, columnspan=2, padx=10, pady=5, sticky='w')
 
-    # Keep names for later enabling
     if i == 0:
         open_mito_qc = btn
     elif i == 1:
@@ -491,7 +499,6 @@ for i, (text, path) in enumerate(view_buttons):
     elif i == 4:
         open_genes_by_counts_qc = btn
 
-
 move_to_filtering = ttk.Button(
     scrollable_frame,
     text="Move to Filtering",
@@ -501,9 +508,9 @@ move_to_filtering = ttk.Button(
 move_to_filtering.grid(row=15, column=0, columnspan=2, pady=15, sticky='w')
 
 # --------------------------
-# Additional threshold entries (second block)
+# Threshold entries (Filtering)
 # --------------------------
-base_row = 16  # adjust if needed so it doesn't overlap other widgets
+base_row = 16
 
 threshold_entries = [
     ("Mitochondria % threshold (e.g. 20)", "mito_percent_thresh", mito_percent_thresh),
@@ -512,8 +519,8 @@ threshold_entries = [
     ("Minimum genes per cell (e.g. 200)", "min_genes_per_cell", min_genes_per_cell)
 ]
 
-# Store references to Entry widgets for later
 entry_widgets = {}
+save_buttons = {}
 
 for i, (label_text, var_name, tk_var) in enumerate(threshold_entries):
     row_idx = base_row + i
@@ -525,7 +532,6 @@ for i, (label_text, var_name, tk_var) in enumerate(threshold_entries):
     status = tk.Label(scrollable_frame, text="", anchor='w')
     status.grid(row=row_idx, column=3, sticky='w')
 
-    # Save button disabled initially; will be enabled by Move to Filtering
     btn = ttk.Button(
         scrollable_frame,
         text='Save',
@@ -534,18 +540,11 @@ for i, (label_text, var_name, tk_var) in enumerate(threshold_entries):
     )
     btn.grid(row=row_idx, column=2, sticky='w', padx=5)
 
-    # Keep references for later use
     entry_widgets[var_name] = entry
-
-# Example: retrieving a threshold later
-# Note: calling .get() here right away will return what's currently in the entry (probably empty).
-mito_value = entry_widgets["mito_percent_thresh"].get()  # this is fine but will be "" until user types and saves
-ribo_value = entry_widgets["ribo_percent_thresh"].get()
-doublet_value = entry_widgets["doublet_thresh"].get()
-min_genes_per_cell_value = entry_widgets["min_genes_per_cell"].get()
+    save_buttons[var_name] = btn
 
 # --------------------------
-# Run + Progress + Status
+# Run + Progress + Status (Filtering)
 # --------------------------
 filter_run = ttk.Button(scrollable_frame, text='Run Filtering!', command=lambda: start_snakemake_job(stage="Filtering"), state='disabled')
 filter_run.grid(row=20, column=3, pady=10, padx=10, sticky='w')
@@ -565,5 +564,3 @@ load_gui_state()
 # Start the GUI event loop
 # --------------------------
 root.mainloop()
-
-
