@@ -19,7 +19,6 @@ current_job_id = None
 job_running = False
 STATE_FILE = "gui_state.json"
 
-# Track which QC buttons have been clicked
 qc_flags = {
     "mito": False,
     "ribo": False,
@@ -28,10 +27,10 @@ qc_flags = {
     "genes_by_counts": False
 }
 
-# In your global state:
 job_state = {
     "QC": {"job_id": None, "running": False, "status_text": "Waiting for QC inputs..."},
-    "Filtering": {"job_id": None, "running": False, "status_text": "Waiting for Filtering inputs..."}
+    "Filtering": {"job_id": None, "running": False, "status_text": "Waiting for Filtering inputs..."},
+    "Modeling": {"job_id": None, "running": False, "status_text": "Waiting for Modeling inputs..."}
 }
 
 # --------------------------
@@ -104,7 +103,7 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
         except ValueError:
             if status_label:
                 status_label.config(text="Not a valid numeric entry", fg='red')
-            check_filter_ready()  # disable Run Filtering if invalid
+            check_filter_ready()
             return
         new_line = f'{variable_name} = {entered_path}\n'
     else:
@@ -124,13 +123,12 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
         with open(target_file, 'w') as file:
             for line in lines:
                 if not replaced_once and line.strip().startswith(f'{variable_name} ='):
-                    file.write(new_line)   # replace only the first match
+                    file.write(new_line)
                     replaced_once = True
                 else:
                     file.write(line)
 
             if not replaced_once:
-                # Append if never found
                 file.write(new_line)
     except Exception as e:
         if status_label:
@@ -169,7 +167,6 @@ def check_filter_ready():
         doublet_thresh.get(),
         min_genes_per_cell.get()
     ])
-    # If any value is not a valid number, disable button
     numeric_invalid = False
     for val in [mito_percent_thresh.get(), ribo_percent_thresh.get(), doublet_thresh.get(), min_genes_per_cell.get()]:
         try:
@@ -188,10 +185,19 @@ def check_filter_ready():
 def start_snakemake_job(stage="QC"):
     global job_state
 
-    sbatch_script = "snakemake.sh" if stage == "QC" else "snakemake.sh"
-    button = QC_run if stage == "QC" else filter_run
-    progress = QC_progressbar if stage=="QC" else filter_progressbar
-    label = QC_status_label if stage=="QC" else filter_status_label
+    # Explicit sbatch script for each stage
+    if stage in ["QC", "Filtering", "Modeling"]:
+        sbatch_script = "snakemake.sh"
+    else:
+        return
+
+    # Patch Snakefile for Modeling if needed
+    if stage == "Modeling":
+        patch_snakefile_for_modeling()
+
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
 
     try:
         result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
@@ -199,7 +205,6 @@ def start_snakemake_job(stage="QC"):
         match = re.search(r'(\d+)', stdout)
         if match:
             job_id = match.group(1)
-            # Update job_state
             job_state[stage].update({
                 "job_id": job_id,
                 "running": True,
@@ -225,11 +230,11 @@ def start_snakemake_job(stage="QC"):
 # Enable filtering stage
 # --------------------------
 def enable_filtering_stage():
-    # Enable only the filtering Save buttons
     for btn in save_buttons.values():
         btn.config(state='normal')
     patch_snakefile_for_filtering()
     QC_status_label.config(text="Filtering stage enabled.", fg='blue')
+    move_to_filtering.config(state='disabled')  # disable after click
 
 # --------------------------
 # Check SLURM job status
@@ -237,9 +242,9 @@ def enable_filtering_stage():
 def check_job_status(job_id, stage="QC"):
     global job_state
 
-    button = QC_run if stage=="QC" else filter_run
-    progress = QC_progressbar if stage=="QC" else filter_progressbar
-    label = QC_status_label if stage=="QC" else filter_status_label
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
 
     try:
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
@@ -263,9 +268,11 @@ def check_job_status(job_id, stage="QC"):
         progress['value'] = 100
         button.config(state='normal')
         save_gui_state()
-        if stage=="QC":
+        if stage == "QC":
             next_process()
         check_filter_ready()
+        if stage == "Filtering":
+            model_run.config(state='normal')
 
 # --------------------------
 # Enable QC result buttons
@@ -290,7 +297,6 @@ def patch_snakefile_for_filtering():
     try:
         with open(target_file, "r") as f:
             lines = f.readlines()
-
         with open(target_file, "w") as f:
             inside_all = False
             for line in lines:
@@ -312,6 +318,29 @@ def patch_snakefile_for_filtering():
     except Exception as e:
         QC_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
+# --------------------------
+# Patch Snakefile for Modeling
+# --------------------------
+def patch_snakefile_for_modeling():
+    target_file = "snakefile"
+    try:
+        with open(target_file, "r") as f:
+            lines = f.readlines()
+        with open(target_file, "w") as f:
+            inside_all = False
+            for line in lines:
+                if line.strip().startswith("rule all"):
+                    f.write("rule all:\n")
+                    f.write("    input:\n")
+                    f.write("        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'\n")
+                    inside_all = True
+                elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
+                    continue
+                else:
+                    f.write(line)
+                    inside_all = False
+    except Exception as e:
+        model_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
 # --------------------------
 # GUI state persistence
@@ -349,35 +378,12 @@ def load_gui_state():
         QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
         return
 
-    for entry_name, value in [("data_dir_entry", "data_dir"), 
-                              ("metadata_dir_entry", "metadata_table"),
-                              ("sample_key_entry", "sample_key"),
-                              ("seq_batch_entry", "seq_batch_key")]:
-        if entry_name in globals() and state.get(value) is not None:
-            entry_widget = globals()[entry_name]
-            entry_widget.delete(0, tk.END)
-            entry_widget.insert(0, state[value])
-
-    cellranger_saved.set(state.get("cellranger_saved", False))
-    metadata_saved.set(state.get("metadata_saved", False))
-    sample_key_saved.set(state.get("sample_key_saved", False))
-    seq_batch_key_saved.set(state.get("seq_batch_key_saved", False))
-
-    mito_percent_thresh.set(state.get("mito_percent_thresh", ""))
-    ribo_percent_thresh.set(state.get("ribo_percent_thresh", ""))
-    doublet_thresh.set(state.get("doublet_thresh", ""))
-    min_genes_per_cell.set(state.get("min_genes_per_cell", ""))
-
     job_state = state.get("job_state", job_state)
 
-    check_all_ready()
-    check_filter_ready()
-
-    # Restore progress bars and status messages
     for stage, info in job_state.items():
-        button = QC_run if stage=="QC" else filter_run
-        progress = QC_progressbar if stage=="QC" else filter_progressbar
-        label = QC_status_label if stage=="QC" else filter_status_label
+        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
+        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
+        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
 
         label.config(text=info.get("status_text", label.cget("text")))
         if info.get("running", False):
@@ -389,18 +395,17 @@ def load_gui_state():
             progress.stop()
             progress['value'] = info["progress"]
             button.config(state='normal')
-            if stage == "QC" and info.get("progress") == 100:
-                next_process()
 
 # --------------------------
 # Handle window close
 # --------------------------
 root.protocol("WM_DELETE_WINDOW", lambda: (save_gui_state(), root.destroy()))
 
+
 # --------------------------
 # Interface Text / Header
 # --------------------------
-header = ttk.Label(scrollable_frame, text='scVIRGILS - Single-cell QC Pipeline', style='Header.Label')
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Quality Control', style='Header.Label')
 header.grid(row=0, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
@@ -556,6 +561,26 @@ filter_progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
 
 filter_status_label = tk.Label(scrollable_frame, text="Waiting for Filtering inputs...", fg="black")
 filter_status_label.grid(row=21, column=0, columnspan=4, pady=10, sticky='w')
+
+# --------------------------
+# Interface Text / Header (Modeling)
+# --------------------------
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Modeling', style='Header.Label')
+header.grid(row=22, column=0, columnspan=4, pady=10, sticky='w')
+
+# --------------------------
+# GUI widgets for Modeling (after defining scrollable_frame)
+# --------------------------
+model_run = ttk.Button(scrollable_frame, text='Run Modeling!', command=lambda: start_snakemake_job(stage="Modeling"), state='disabled')
+model_run.grid(row=23, column=3, pady=10, padx=10, sticky='w')
+
+model_progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+model_progress_bar.grid(row=23, column=0, columnspan=3, padx=10, sticky='ew')
+
+model_status_label = tk.Label(scrollable_frame, text="Waiting to start Modeling...", fg="black")
+model_status_label.grid(row=24, column=0, columnspan=4, pady=10, sticky='w')
+
+
 
 # --------------------------
 # Load any previous GUI state after UI creation
