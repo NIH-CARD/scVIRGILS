@@ -389,6 +389,8 @@ def load_gui_state():
             progress.stop()
             progress['value'] = info["progress"]
             button.config(state='normal')
+            if stage == "QC" and info.get("progress") == 100:
+                next_process()
 
 # --------------------------
 # Handle window close
