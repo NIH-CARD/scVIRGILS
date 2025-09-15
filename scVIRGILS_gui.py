@@ -191,10 +191,7 @@ def start_snakemake_job(stage="QC"):
     else:
         return
 
-    # Patch Snakefile for Modeling if needed
-    if stage == "Modeling":
-        patch_snakefile_for_modeling()
-
+    
     button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
     progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
     label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
@@ -237,6 +234,15 @@ def enable_filtering_stage():
     move_to_filtering.config(state='disabled')  # disable after click
 
 # --------------------------
+# Enable Modeling stage
+# --------------------------
+
+def enable_modeling_stage():
+    patch_snakefile_for_modeling()
+    model_status_label.config(text="Modeling stage enabled.", fg='blue')
+    move_to_modeling.config(state='disabled')  # disable after click
+
+# --------------------------
 # Check SLURM job status
 # --------------------------
 def check_job_status(job_id, stage="QC"):
@@ -272,7 +278,7 @@ def check_job_status(job_id, stage="QC"):
             next_process()
         check_filter_ready()
         if stage == "Filtering":
-            model_run.config(state='normal')
+            move_to_modeling.config(state='normal')
 
 # --------------------------
 # Enable QC result buttons
@@ -562,23 +568,32 @@ filter_progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
 filter_status_label = tk.Label(scrollable_frame, text="Waiting for Filtering inputs...", fg="black")
 filter_status_label.grid(row=21, column=0, columnspan=4, pady=10, sticky='w')
 
+move_to_modeling = ttk.Button(
+    scrollable_frame,
+    text="Move to Modeling",
+    command=enable_modeling_stage,
+    state='disabled'
+)
+
+move_to_modeling.grid(row=22, column=0, columnspan=2, pady=15, sticky='w')
+
 # --------------------------
 # Interface Text / Header (Modeling)
 # --------------------------
 header = ttk.Label(scrollable_frame, text='scVIRGILS - Modeling', style='Header.Label')
-header.grid(row=22, column=0, columnspan=4, pady=10, sticky='w')
+header.grid(row=23, column=0, columnspan=4, pady=10, sticky='w')
 
 # --------------------------
 # GUI widgets for Modeling (after defining scrollable_frame)
 # --------------------------
 model_run = ttk.Button(scrollable_frame, text='Run Modeling!', command=lambda: start_snakemake_job(stage="Modeling"), state='disabled')
-model_run.grid(row=23, column=3, pady=10, padx=10, sticky='w')
+model_run.grid(row=24, column=3, pady=10, padx=10, sticky='w')
 
 model_progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
-model_progress_bar.grid(row=23, column=0, columnspan=3, padx=10, sticky='ew')
+model_progress_bar.grid(row=24, column=0, columnspan=3, padx=10, sticky='ew')
 
 model_status_label = tk.Label(scrollable_frame, text="Waiting to start Modeling...", fg="black")
-model_status_label.grid(row=24, column=0, columnspan=4, pady=10, sticky='w')
+model_status_label.grid(row=25, column=0, columnspan=4, pady=10, sticky='w')
 
 
 
