@@ -402,6 +402,18 @@ def load_gui_state():
             progress['value'] = info["progress"]
             button.config(state='normal')
 
+    # Auto-enable filtering if QC result file exists
+    if os.path.exists("figures/QC_mito_pct.png"):
+        QC_status_label.config(text="QC complete (detected QC results).", fg="green")
+        next_process()  # enable QC view buttons
+        move_to_filtering.config(state='normal')
+
+    # Auto-enable modeling if final annotated anndata exists
+    if os.path.exists("atlas/04_annotated_anndata_rna.h5ad"):
+        filter_status_label.config(text="Filtering complete (detected atlas).", fg="green")
+        move_to_modeling.config(state='normal')
+
+
 # --------------------------
 # Handle window close
 # --------------------------
