@@ -45,13 +45,17 @@ rule all:
         genes_by_counts = work_dir+'/figures/QC_genes_by_counts.png'
 
 """
-# replace above input for rule all when you have verified QC metrics
+# replace above input for rule all when you have verified QC metrics - No merging
         rna_anndata=expand(
             work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
             zip,
             batch=batches,
             sample=samples
         ),
+
+# replace above input for rule all when you want to filter AND merge
+        merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'
+
 
 # replace above input for rule all when you want to model rna data
         merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'

@@ -309,12 +309,7 @@ def patch_snakefile_for_filtering():
                 if line.strip().startswith("rule all"):
                     f.write("rule all:\n")
                     f.write("    input:\n")
-                    f.write("        rna_anndata=expand(\n")
-                    f.write("            work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad',\n")
-                    f.write("            zip,\n")
-                    f.write("            batch=batches,\n")
-                    f.write("            sample=samples\n")
-                    f.write("        ),\n")
+                    f.write("        merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'")
                     inside_all = True
                 elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
                     continue
@@ -408,8 +403,8 @@ def load_gui_state():
         next_process()  # enable QC view buttons
         move_to_filtering.config(state='normal')
 
-    # Auto-enable modeling if final annotated anndata exists
-    if os.path.exists("atlas/04_annotated_anndata_rna.h5ad"):
+    # Auto-enable modeling if final filtered merged anndata exists
+    if os.path.exists("atlas/02_filtered_anndata_rna.h5ad"):
         filter_status_label.config(text="Filtering complete (detected atlas).", fg="green")
         move_to_modeling.config(state='normal')
 
