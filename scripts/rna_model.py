@@ -24,7 +24,7 @@ sc.pp.filter_genes(adata, min_cells=3)
 sc.pp.highly_variable_genes(
     adata, 
     layer='log-norm',
-    n_top_genes=10000, 
+    n_top_genes=2000, 
     batch_key=sys.argv[2])
 
 # Define mitochondria and ribosome genes to remove

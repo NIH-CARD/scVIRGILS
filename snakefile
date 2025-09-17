@@ -57,8 +57,9 @@ rule all:
         merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'
 
 
-# replace above input for rule all when you want to model rna data
+# replace above input for rule all when you want to model and annotate rna data
         merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'
+
 
 # replace above input for rule all when you want to run DGE/DAR analysis
         output_DGE_data = expand(
