@@ -233,6 +233,7 @@ def enable_filtering_stage():
     QC_status_label.config(text="Filtering stage enabled.", fg='blue')
     move_to_filtering.config(state='disabled')  # disable after click
 
+
 # --------------------------
 # Enable Modeling stage
 # --------------------------
@@ -241,7 +242,9 @@ def enable_modeling_stage():
     patch_snakefile_for_modeling()
     model_status_label.config(text="Modeling stage enabled.", fg='blue')
     move_to_modeling.config(state='disabled')  # disable after click
-
+    if not job_state["Modeling"]["running"]:
+        model_run.config(state='normal')
+        
 # --------------------------
 # Check SLURM job status
 # --------------------------
