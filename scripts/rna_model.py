@@ -36,7 +36,7 @@ filtered_adata = adata[:, (adata.var['highly_variable']) & ~(adata.var['mt']) & 
 
 # Setup SCVI on the data layer
 scvi.model.SCVI.setup_anndata(
-    filtered_adata, layer="log-norm", batch_key=sys.argv[2])
+    filtered_adata, layer="counts", batch_key=sys.argv[2])
 
 # Add the parameters of the model
 model = scvi.model.SCVI(
