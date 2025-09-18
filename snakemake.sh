@@ -27,6 +27,7 @@ module load singularity/4.2.2
 # Update permissions on the bash scripts 
 chmod 777 scripts/rna_model.sh
 chmod 777 scripts/cellbender_array.sh
+chmod 777 scripts/rna_model_mnc.sh
 #chmod 777 scripts/atac_model.sh
 
 # RUN SCRIPT
