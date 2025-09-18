@@ -183,16 +183,17 @@ rule rna_model:
         merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'
     output:
         merged_rna_anndata = work_dir+'/atlas/03_modeled_anndata_rna.h5ad',
-        model_history = work_dir+'/data/model_elbo/rna_model_history.csv'
+        #model_history = work_dir+'/data/model_elbo/rna_model_history.csv'
     params:
-        model = work_dir+'/data/models/rna/',
+        #model = work_dir+'/data/models/rna/',
         sample_key=sample_key
     threads:
         64
     resources:
         runtime=2880, mem_mb=300000, gpu=2, gpu_model='v100x'
     shell:
-        'scripts/rna_model.sh {input.merged_rna_anndata} {params.sample_key} {output.model_history} {output.merged_rna_anndata} {params.model}'
+        #'scripts/rna_model.sh {input.merged_rna_anndata} {params.sample_key} {output.model_history} {output.merged_rna_anndata} {params.model}'
+        'scripts/rna_model_mnc.sh {input.merged_rna_anndata} {params.sample_key} {output.merged_rna_anndata}'
 
 rule annotate:
     input:
