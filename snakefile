@@ -36,7 +36,8 @@ envs = {
     'snapatac2': 'envs/snapatac2.sif',
     'singlecell': 'envs/single_cell_gpu.sif',
     'scenicplus': 'envs/scenicplus.sif',
-    'decoupler': 'envs/decoupler.sif'
+    'decoupler': 'envs/decoupler.sif',
+    'single_cell_basic': 'envs/single_cell_basic.sif'
     }
 
 rule all:
@@ -184,6 +185,8 @@ rule rna_model:
     output:
         merged_rna_anndata = work_dir+'/atlas/03_modeled_anndata_rna.h5ad',
         #model_history = work_dir+'/data/model_elbo/rna_model_history.csv'
+    singularity:
+        envs['single_cell_basic']
     params:
         #model = work_dir+'/data/models/rna/',
         sample_key=sample_key
