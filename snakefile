@@ -193,7 +193,8 @@ rule rna_model:
     threads:
         64
     resources:
-        runtime=2880, mem_mb=300000, gpu=2, gpu_model='v100x'
+        runtime=120, mem_mb=1000000, disk_mb=10000, slurm_partition='largemem'
+        #runtime=2880, mem_mb=300000, gpu=2, gpu_model='v100x'
     shell:
         #'scripts/rna_model.sh {input.merged_rna_anndata} {params.sample_key} {output.model_history} {output.merged_rna_anndata} {params.model}'
         'scripts/rna_model_mnc.sh {input.merged_rna_anndata} {params.sample_key} {output.merged_rna_anndata}'

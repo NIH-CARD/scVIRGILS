@@ -312,7 +312,8 @@ def patch_snakefile_for_filtering():
                 if line.strip().startswith("rule all"):
                     f.write("rule all:\n")
                     f.write("    input:\n")
-                    f.write("        merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'")
+                    f.write("        merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'\n")
+
                     inside_all = True
                 elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
                     continue
@@ -330,21 +331,35 @@ def patch_snakefile_for_modeling():
     try:
         with open(target_file, "r") as f:
             lines = f.readlines()
+
         with open(target_file, "w") as f:
             inside_all = False
             for line in lines:
-                if line.strip().startswith("rule all"):
-                    f.write("rule all:\n")
-                    f.write("    input:\n")
-                    f.write("        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'\n")
+                stripped = line.strip()
+
+                # Detect the start of rule all
+                if stripped.startswith("rule all"):
                     inside_all = True
-                elif inside_all and (line.strip().startswith("input:") or line.strip().startswith("#") or line.startswith(" ")):
+                    f.write(line)
                     continue
-                else:
+
+                # Detect input line inside rule all
+                if inside_all and "merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'" in stripped:
+                    f.write("        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'\n")
+                    continue
+
+                # Stop tracking once we hit a """ or something not part of the input
+                if inside_all and stripped.startswith('"""'):
                     f.write(line)
                     inside_all = False
+                    continue
+
+                # Write everything else as-is
+                f.write(line)
+
     except Exception as e:
         model_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
+
 
 # --------------------------
 # GUI state persistence
