@@ -1,9 +1,16 @@
+import sys
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import scanpy as sc
 import numpy as np
+
+# ---- shim for NumPy>=2 where np.compat.unicode is missing ----
+if not hasattr(np, "compat"):
+    class _Compat: 
+        unicode = str
+    np.compat = _Compat()
+# --------------------------------------------------------------
+
 import anndata as ad
 import snapatac2 as snap
 import scanpy.external as sce
@@ -39,4 +46,4 @@ sc.pp.neighbors(adata, n_neighbors=10)  # Compute neighbors
 sc.tl.umap(adata)  # Run UMAP
 
 # Save the anndata object
-adata.write_h5ad(sys.argv[4], compression='gzip')
+adata.write_h5ad(sys.argv[3], compression='gzip')
