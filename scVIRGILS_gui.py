@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scVIRGILS - Tkinter GUI for running a Snakemake QC and Filtering pipeline
+scVIRGILS - Tkinter GUI for running a Snakemake QC, Filtering, and batch correction pipeline
 """
 
 import tkinter as tk
@@ -30,7 +30,7 @@ qc_flags = {
 job_state = {
     "QC": {"job_id": None, "running": False, "status_text": "Waiting for QC inputs..."},
     "Filtering": {"job_id": None, "running": False, "status_text": "Waiting for Filtering inputs..."},
-    "Modeling": {"job_id": None, "running": False, "status_text": "Waiting for Modeling inputs..."}
+    "Batch Correction": {"job_id": None, "running": False, "status_text": "Waiting for Batch Correction inputs..."}
 }
 
 # --------------------------
@@ -149,15 +149,18 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
 # --------------------------
 # Enable/Disable Run button based on readiness
 # --------------------------
+
 def check_all_ready():
+    """QC run is enabled once CORE inputs are saved. Seq batch key is no longer required here."""
     global job_running
-    if cellranger_saved.get() and metadata_saved.get() and sample_key_saved.get() and seq_batch_key_saved.get():
+    if cellranger_saved.get() and metadata_saved.get() and sample_key_saved.get():
         if not job_running:
             QC_run.config(state='normal')
         else:
             QC_run.config(state='disabled')
     else:
         QC_run.config(state='disabled')
+
 
 def check_filter_ready():
     global job_running
@@ -182,19 +185,20 @@ def check_filter_ready():
 # --------------------------
 # Start a Snakemake job via sbatch
 # --------------------------
+
 def start_snakemake_job(stage="QC"):
     global job_state
 
     # Explicit sbatch script for each stage
-    if stage in ["QC", "Filtering", "Modeling"]:
+    if stage in ["QC", "Filtering", "Batch Correction"]:
         sbatch_script = "snakemake.sh"
     else:
         return
 
     
-    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
-    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
-    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
 
     try:
         result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
@@ -226,6 +230,7 @@ def start_snakemake_job(stage="QC"):
 # --------------------------
 # Enable filtering stage
 # --------------------------
+
 def enable_filtering_stage():
     for btn in save_buttons.values():
         btn.config(state='normal')
@@ -235,25 +240,33 @@ def enable_filtering_stage():
 
 
 # --------------------------
-# Enable Modeling stage
+# Enable Batch Correction stage
 # --------------------------
 
-def enable_modeling_stage():
-    patch_snakefile_for_modeling()
-    model_status_label.config(text="Modeling stage enabled.", fg='blue')
-    move_to_modeling.config(state='disabled')  # disable after click
-    if not job_state["Modeling"]["running"]:
-        model_run.config(state='normal')
+def enable_batch_correction_stage():
+    patch_snakefile_for_batch_correction()
+    batch_correction_status_label.config(text="Batch correction stage enabled.", fg='blue')
+    move_to_batch_correction.config(state='disabled')  # disable after click
+
+    # Enable the Seq Batch Key save button now that we're entering this stage
+    try:
+        seq_batch_save_button.config(state='normal')
+    except Exception:
+        pass
+
+    if not job_state["Batch Correction"]["running"]:
+        batch_correction_run.config(state='normal')
         
 # --------------------------
 # Check SLURM job status
 # --------------------------
+
 def check_job_status(job_id, stage="QC"):
     global job_state
 
-    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
-    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
-    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
 
     try:
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
@@ -281,11 +294,12 @@ def check_job_status(job_id, stage="QC"):
             next_process()
         check_filter_ready()
         if stage == "Filtering":
-            move_to_modeling.config(state='normal')
+            move_to_batch_correction.config(state='normal')
 
 # --------------------------
 # Enable QC result buttons
 # --------------------------
+
 def next_process():
     open_mito_qc.config(state='normal')
     open_ribo_qc.config(state='normal')
@@ -301,6 +315,7 @@ def mark_qc_viewed(flag_key):
 # --------------------------
 # Patch Snakefile for filtering
 # --------------------------
+
 def patch_snakefile_for_filtering():
     target_file = "snakefile"
     try:
@@ -324,9 +339,10 @@ def patch_snakefile_for_filtering():
         QC_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
 # --------------------------
-# Patch Snakefile for Modeling
+# Patch Snakefile for Batch Correction
 # --------------------------
-def patch_snakefile_for_modeling():
+
+def patch_snakefile_for_batch_correction():
     target_file = "snakefile"
     try:
         with open(target_file, "r") as f:
@@ -345,7 +361,7 @@ def patch_snakefile_for_modeling():
 
                 # Detect input line inside rule all
                 if inside_all and "merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'" in stripped:
-                    f.write("        merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'\n")
+                    f.write("        merged_rna_anndata = work_dir+'/atlas/03_modeled_anndata_rna.h5ad'\n")
                     continue
 
                 # Stop tracking once we hit a """ or something not part of the input
@@ -358,12 +374,13 @@ def patch_snakefile_for_modeling():
                 f.write(line)
 
     except Exception as e:
-        model_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
+        batch_correction_status_label.config(text=f"Error patching Snakefile: {e}", fg='red')
 
 
 # --------------------------
 # GUI state persistence
 # --------------------------
+
 def save_gui_state(stage=None):
     state = {
         "data_dir": data_dir_entry.get() if 'data_dir_entry' in globals() else "",
@@ -386,6 +403,7 @@ def save_gui_state(stage=None):
     except Exception as e:
         QC_status_label.config(text=f"Error saving GUI state: {e}", fg='red')
 
+
 def load_gui_state():
     global job_state
     if not os.path.exists(STATE_FILE):
@@ -400,9 +418,10 @@ def load_gui_state():
     job_state = state.get("job_state", job_state)
 
     for stage, info in job_state.items():
-        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else model_run
-        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else model_progress_bar
-        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else model_status_label
+        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
+        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
+        # Fixed small typo from original: batch_correction_status_label name
+        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
 
         label.config(text=info.get("status_text", label.cget("text")))
         if info.get("running", False):
@@ -421,10 +440,10 @@ def load_gui_state():
         next_process()  # enable QC view buttons
         move_to_filtering.config(state='normal')
 
-    # Auto-enable modeling if final filtered merged anndata exists
+    # Auto-enable batch_correction if final filtered merged anndata exists
     if os.path.exists("atlas/02_filtered_anndata_rna.h5ad"):
         filter_status_label.config(text="Filtering complete (detected atlas).", fg="green")
-        move_to_modeling.config(state='normal')
+        move_to_batch_correction.config(state='normal')
 
 
 # --------------------------
@@ -454,12 +473,12 @@ except Exception:
 
 # --------------------------
 # Primary Input Entries (first block)
+# NOTE: Seq Batch Key is REMOVED from this block and added near Batch Correction
 # --------------------------
 entries = [
     ("CELLRANGER Path", "data_dir", cellranger_saved),
     ("METADATA Path", "metadata_table", metadata_saved),
-    ("Sample Key (e.g. sample_id)", "sample_key", sample_key_saved),
-    ("Seq Batch Key (e.g. sequencing_round)", "seq_batch_key", seq_batch_key_saved)
+    ("Sample Key (e.g. sample_id)", "sample_key", sample_key_saved)
 ]
 
 for i, (label_text, var_name, flag_var) in enumerate(entries):
@@ -477,8 +496,6 @@ for i, (label_text, var_name, flag_var) in enumerate(entries):
         metadata_dir_entry = entry
     elif var_name == "sample_key":
         sample_key_entry = entry
-    elif var_name == "seq_batch_key":
-        seq_batch_entry = entry
 
 # --------------------------
 # Run + Progress + Status (QC)
@@ -593,33 +610,56 @@ filter_progressbar.grid(row=20, column=0, columnspan=3, padx=10, sticky='ew')
 filter_status_label = tk.Label(scrollable_frame, text="Waiting for Filtering inputs...", fg="black")
 filter_status_label.grid(row=21, column=0, columnspan=4, pady=10, sticky='w')
 
-move_to_modeling = ttk.Button(
+move_to_batch_correction = ttk.Button(
     scrollable_frame,
-    text="Move to Modeling",
-    command=enable_modeling_stage,
+    text="Move to Batch correction",
+    command=enable_batch_correction_stage,
     state='disabled'
 )
 
-move_to_modeling.grid(row=22, column=0, columnspan=2, pady=15, sticky='w')
+move_to_batch_correction.grid(row=22, column=0, columnspan=2, pady=15, sticky='w')
 
 # --------------------------
-# Interface Text / Header (Modeling)
+# Seq Batch Key input (moved here, just before Batch Correction)
+# Save button is DISABLED until "Move to Batch correction" is clicked
 # --------------------------
-header = ttk.Label(scrollable_frame, text='scVIRGILS - Modeling', style='Header.Label')
-header.grid(row=23, column=0, columnspan=4, pady=10, sticky='w')
+seq_batch_row = 22  # place directly after the move_to_batch_correction button
+
+seq_batch_label = ttk.Label(scrollable_frame, text="Seq Batch Key (e.g. sequencing_round)", wraplength=400)
+seq_batch_label.grid(row=seq_batch_row+1, column=0, sticky='e', padx=10, pady=5)
+
+seq_batch_entry = ttk.Entry(scrollable_frame, width=50)
+seq_batch_entry.grid(row=seq_batch_row+1, column=1, sticky='w')
+
+seq_batch_status = tk.Label(scrollable_frame, text="", anchor='w')
+seq_batch_status.grid(row=seq_batch_row+1, column=3, sticky='w')
+
+seq_batch_save_button = ttk.Button(
+    scrollable_frame,
+    text='Save',
+    command=lambda: fill("seq_batch_key", seq_batch_entry.get(), seq_batch_status, seq_batch_key_saved),
+    state='disabled'  # <- remains disabled until user clicks Move to Batch correction
+)
+seq_batch_save_button.grid(row=seq_batch_row+1, column=2, sticky='w', padx=5)
 
 # --------------------------
-# GUI widgets for Modeling (after defining scrollable_frame)
+# Interface Text / Header (Batch correction)
 # --------------------------
-model_run = ttk.Button(scrollable_frame, text='Run Modeling!', command=lambda: start_snakemake_job(stage="Modeling"), state='disabled')
-model_run.grid(row=24, column=3, pady=10, padx=10, sticky='w')
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Batch Correction', style='Header.Label')
+header.grid(row=23+1, column=0, columnspan=4, pady=10, sticky='w')
 
-model_progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
-model_progress_bar.grid(row=24, column=0, columnspan=3, padx=10, sticky='ew')
+# --------------------------
+# GUI widgets for Batch Correction (after defining scrollable_frame)
+# --------------------------
+batch_correction_run = ttk.Button(scrollable_frame, text='Run Batch Correction!', command=lambda: start_snakemake_job(stage="Batch Correction"), state='disabled')
+# placed after header row
+batch_correction_run.grid(row=24+1, column=3, pady=10, padx=10, sticky='w')
 
-model_status_label = tk.Label(scrollable_frame, text="Waiting to start Modeling...", fg="black")
-model_status_label.grid(row=25, column=0, columnspan=4, pady=10, sticky='w')
+batch_correction_progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+batch_correction_progress_bar.grid(row=24+1, column=0, columnspan=3, padx=10, sticky='ew')
 
+batch_correction_status_label = tk.Label(scrollable_frame, text="Waiting to start Batch Correction...", fg="black")
+batch_correction_status_label.grid(row=25+1, column=0, columnspan=4, pady=10, sticky='w')
 
 
 # --------------------------

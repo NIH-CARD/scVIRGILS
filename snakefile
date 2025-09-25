@@ -58,7 +58,10 @@ rule all:
         merged_rna_anndata = work_dir+'/atlas/02_filtered_anndata_rna.h5ad'
 
 
-# replace above input for rule all when you want to model and annotate rna data
+# replace above input for rule all when you want to batch correct
+        merged_rna_anndata = work_dir+'/atlas/03_modeled_anndata_rna.h5ad'
+
+# replace above input for rule all when you want to annotate
         merged_rna_anndata = work_dir+'/atlas/04_annotated_anndata_rna.h5ad'
 
 
