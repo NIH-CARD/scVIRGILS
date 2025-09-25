@@ -14,7 +14,7 @@ gene_markers_file = work_dir+'/input/example_marker_genes.csv' # Define where ce
 """Metadata parameters"""
 seq_batch_key = 'Use_batch' # Key for sequencing batch, used for directory search
 sample_key = 'Sample' # Key for samples, required in aggregating while preserving sample info
-batches = pd.read_csv(metadata_table)[seq_batch_key].tolist() # Read in the list of batches and samples
+#batches = pd.read_csv(metadata_table)[seq_batch_key].tolist() # Read in the list of batches and samples
 samples = pd.read_csv(metadata_table)[sample_key].tolist()
 disease_param = 'Primary Diagnosis' # Name of the disease parameter
 control = 'control' # Define disease states
