@@ -109,7 +109,6 @@ rule merge_unfiltered:
         rna_anndata=expand(
             work_dir+'/{sample}/01_{sample}_anndata_object_rna.h5ad', 
             zip,
-            batch=batches,
             sample=samples
             )
     output:
@@ -168,7 +167,6 @@ rule merge_filtered_rna:
         rna_anndata=expand(
             work_dir+'/{sample}/02_{sample}_anndata_filtered_rna.h5ad', 
             zip,
-            batch=batches,
             sample=samples
             )
     output:
