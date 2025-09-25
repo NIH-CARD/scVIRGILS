@@ -18,6 +18,10 @@ import os
 current_job_id = None
 job_running = False
 STATE_FILE = "gui_state.json"
+# Conversion I/O
+CONVERT_IN = os.path.join("atlas", "03_modeled_anndata_rna.h5ad")
+CONVERT_OUT = os.path.join("atlas", "03_modeled_anndata_rna.h5seurat")
+conversion_proc = None  # subprocess handle
 
 qc_flags = {
     "mito": False,
@@ -30,7 +34,8 @@ qc_flags = {
 job_state = {
     "QC": {"job_id": None, "running": False, "status_text": "Waiting for QC inputs..."},
     "Filtering": {"job_id": None, "running": False, "status_text": "Waiting for Filtering inputs..."},
-    "Batch Correction": {"job_id": None, "running": False, "status_text": "Waiting for Batch Correction inputs..."}
+    "Batch Correction": {"job_id": None, "running": False, "status_text": "Waiting for Batch Correction inputs..."},
+    "Conversion": {"job_id": None, "running": False, "status_text": "Waiting for Pipeline completion..."}
 }
 
 # --------------------------
@@ -147,6 +152,83 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
     check_filter_ready()
 
 # --------------------------
+# Conversion Helpers 
+# --------------------------
+def update_conversion_button_state():
+    """Enable/disable Convert! based on presence of input file and running state."""
+    exists = os.path.exists(CONVERT_IN)
+    running = job_state["Conversion"].get("running", False)
+    convert_run.config(state=('normal' if exists and not running else 'disabled'))
+    # Re-check periodically so the button auto-enables once the file shows up
+    root.after(3000, update_conversion_button_state)
+
+def start_conversion_job():
+    """Run singularity exec ... convert_h5ad.R 03_modeled_anndata_rna.h5ad from atlas/."""
+    global conversion_proc
+    if not os.path.exists(CONVERT_IN):
+        convert_status_label.config(text=f"Input not found: {CONVERT_IN}", fg="red")
+        return
+
+    atlas_dir = os.path.dirname(CONVERT_IN) or "."
+    bind_path = os.path.abspath(atlas_dir)
+
+    cmd = [
+        "singularity", "exec", "--bind", bind_path,
+        "r_container.sif", "Rscript", "convert_h5ad.R", "03_modeled_anndata_rna.h5ad"
+    ]
+
+    try:
+        convert_run.config(state='disabled')
+        convert_progress_bar.start()
+        convert_status_label.config(text="Conversion started…", fg="blue")
+        job_state["Conversion"].update({"running": True, "status_text": "Conversion in progress..."})
+        save_gui_state()
+
+        # Launch from atlas/ so the bare filename works
+        conversion_proc = subprocess.Popen(
+            cmd, cwd=atlas_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        # Begin polling for completion
+        root.after(1500, check_conversion_status)
+    except Exception as e:
+        convert_status_label.config(text=f"Error starting conversion: {e}", fg="red")
+        convert_run.config(state='normal')
+
+def check_conversion_status():
+    """Consider conversion complete when CONVERT_OUT exists; otherwise handle failures."""
+    global conversion_proc
+
+    # Success: output file appeared
+    if os.path.exists(CONVERT_OUT):
+        convert_progress_bar.stop()
+        convert_progress_bar['value'] = 100
+        job_state["Conversion"].update({"running": False, "status_text": "Conversion complete!", "progress": 100})
+        convert_status_label.config(text="Conversion complete!", fg="green")
+        convert_run.config(state='normal')  # allow re-run if desired
+        save_gui_state()
+        return
+
+    # If process ended but no output, surface the error
+    if conversion_proc is not None:
+        rc = conversion_proc.poll()
+        if rc is not None:
+            out, err = conversion_proc.communicate()
+            job_state["Conversion"].update({"running": False, "status_text": f"Conversion failed (code {rc})"})
+            convert_progress_bar.stop()
+            convert_status_label.config(
+                text=f"Conversion failed (exit {rc}). See stderr in console.", fg="red"
+            )
+            # Print logs to terminal (keeps GUI lean)
+            if out: print("[convert stdout]\n", out)
+            if err: print("[convert stderr]\n", err)
+            convert_run.config(state='normal')
+            save_gui_state()
+            return
+
+    # Still running; poll again
+    root.after(1500, check_conversion_status)
+
+# --------------------------
 # Enable/Disable Run button based on readiness
 # --------------------------
 
@@ -196,9 +278,9 @@ def start_snakemake_job(stage="QC"):
         return
 
     
-    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
-    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
-    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
 
     try:
         result = subprocess.run(['sbatch', sbatch_script], capture_output=True, check=True, text=True)
@@ -264,9 +346,9 @@ def enable_batch_correction_stage():
 def check_job_status(job_id, stage="QC"):
     global job_state
 
-    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
-    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
-    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
 
     try:
         result = subprocess.run(['squeue', '-j', job_id], capture_output=True, text=True)
@@ -295,6 +377,11 @@ def check_job_status(job_id, stage="QC"):
         check_filter_ready()
         if stage == "Filtering":
             move_to_batch_correction.config(state='normal')
+            next_process()
+        elif stage == "Batch Correction":
+            convert_status_label.config(text="Batch correction complete.", fg="green")
+            # Button will auto-enable via update_conversion_button_state() within 3s
+
 
 # --------------------------
 # Enable QC result buttons
@@ -418,10 +505,10 @@ def load_gui_state():
     job_state = state.get("job_state", job_state)
 
     for stage, info in job_state.items():
-        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run
-        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar
+        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
+        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
         # Fixed small typo from original: batch_correction_status_label name
-        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label
+        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
 
         label.config(text=info.get("status_text", label.cget("text")))
         if info.get("running", False):
@@ -444,6 +531,19 @@ def load_gui_state():
     if os.path.exists("atlas/02_filtered_anndata_rna.h5ad"):
         filter_status_label.config(text="Filtering complete (detected atlas).", fg="green")
         move_to_batch_correction.config(state='normal')
+
+    # Auto-enable convert if batch corrected data exists
+    # Auto-enable convert if modeled anndata exists
+    if os.path.exists(CONVERT_IN):
+        convert_status_label.config(text="Batch correction complete (detected atlas).", fg="green")
+        # Only enable if not currently running
+        if not job_state["Conversion"].get("running", False):
+            convert_run.config(state='normal')
+
+    # If output already exists, show as complete
+    if os.path.exists(CONVERT_OUT):
+        convert_status_label.config(text="Conversion complete (detected h5seurat).", fg="green")
+        convert_run.config(state='normal')
 
 
 # --------------------------
@@ -661,6 +761,27 @@ batch_correction_progress_bar.grid(row=24+1, column=0, columnspan=3, padx=10, st
 batch_correction_status_label = tk.Label(scrollable_frame, text="Waiting to start Batch Correction...", fg="black")
 batch_correction_status_label.grid(row=25+1, column=0, columnspan=4, pady=10, sticky='w')
 
+# --------------------------
+# Interface Text / Header (Convert to seurat)
+# --------------------------
+header = ttk.Label(scrollable_frame, text='scVIRGILS - Convert h5ad to seurat', style='Header.Label')
+header.grid(row=26+1, column=0, columnspan=4, pady=10, sticky='w')
+
+# --------------------------
+# GUI widgets for converting to seurat object (after defining scrollable_frame)
+# --------------------------
+convert_run = ttk.Button(scrollable_frame, text='Convert!', command=start_conversion_job, state='disabled')
+# placed after header row
+convert_run.grid(row=27+1, column=3, pady=10, padx=10, sticky='w')
+
+convert_progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate')
+convert_progress_bar.grid(row=27+1, column=0, columnspan=3, padx=10, sticky='ew')
+
+convert_status_label = tk.Label(scrollable_frame, text="Waiting to start Conversion...", fg="black")
+convert_status_label.grid(row=28+1, column=0, columnspan=4, pady=10, sticky='w')
+
+
+update_conversion_button_state()
 
 # --------------------------
 # Load any previous GUI state after UI creation

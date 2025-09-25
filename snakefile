@@ -37,7 +37,8 @@ envs = {
     'singlecell': 'envs/single_cell_gpu.sif',
     'scenicplus': 'envs/scenicplus.sif',
     'decoupler': 'envs/decoupler.sif',
-    'single_cell_basic': 'envs/single_cell_basic.sif'
+    'single_cell_basic': 'envs/single_cell_basic.sif',
+    'r_container': 'envs/r_container.sif'
     }
 
 rule all:
