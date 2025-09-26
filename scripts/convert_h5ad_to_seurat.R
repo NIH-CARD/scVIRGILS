@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1 || length(args) > 3) {
   cat("Usage:\n",
-      "  Rscript h5ad_to_seurat_seuratdisk.R <input.h5ad> [output.rds] [assay=RNA]\n",
+      "  Rscript convert_h5ad_to_seurat.R <input.h5ad> [output.rds] [assay=RNA]\n",
       sep = "")
   quit(status = 1)
 }

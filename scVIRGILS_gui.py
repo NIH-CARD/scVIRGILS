@@ -23,6 +23,9 @@ CONVERT_IN = os.path.join("atlas", "03_modeled_anndata_rna.h5ad")
 CONVERT_OUT = os.path.join("atlas", "03_modeled_anndata_rna.h5seurat")
 conversion_proc = None  # subprocess handle
 
+CONVERT_SCRIPT = "/scripts/convert_h5ad_to_seurat.sh"
+CONVERT_POLL_MS = 1500
+
 qc_flags = {
     "mito": False,
     "ribo": False,
@@ -155,27 +158,32 @@ def fill(variable_name, entered_path, status_label=None, flag_var=None, numeric=
 # Conversion Helpers 
 # --------------------------
 def update_conversion_button_state():
-    """Enable/disable Convert! based on presence of input file and running state."""
-    exists = os.path.exists(CONVERT_IN)
+    """Enable/disable Convert! based on presence of input file, script, and running state."""
+    exists_in = os.path.exists(CONVERT_IN)
+    script_ok = os.path.exists(CONVERT_SCRIPT)
     running = job_state["Conversion"].get("running", False)
-    convert_run.config(state=('normal' if exists and not running else 'disabled'))
-    # Re-check periodically so the button auto-enables once the file shows up
+    enable = exists_in and script_ok and not running
+    convert_run.config(state=('normal' if enable else 'disabled'))
     root.after(3000, update_conversion_button_state)
 
 def start_conversion_job():
-    """Run singularity exec ... convert_h5ad.R 03_modeled_anndata_rna.h5ad from atlas/."""
+    """Run the bash conversion script to turn h5ad -> h5seurat."""
     global conversion_proc
+
     if not os.path.exists(CONVERT_IN):
         convert_status_label.config(text=f"Input not found: {CONVERT_IN}", fg="red")
         return
 
-    atlas_dir = os.path.dirname(CONVERT_IN) or "."
-    bind_path = os.path.abspath(atlas_dir)
-
-    cmd = [
-        "singularity", "exec", "--bind", bind_path,
-        "r_container.sif", "Rscript", "convert_h5ad.R", "03_modeled_anndata_rna.h5ad"
-    ]
+    script_path = "/scripts/convert_h5ad_to_seurat.sh"
+    if not os.path.exists(script_path):
+        convert_status_label.config(text=f"Script not found: {script_path}", fg="red")
+        return
+    if not os.access(script_path, os.X_OK):
+        try:
+            os.chmod(script_path, 0o755)
+        except Exception:
+            convert_status_label.config(text=f"Script not executable (chmod +x): {script_path}", fg="red")
+            return
 
     try:
         convert_run.config(state='disabled')
@@ -184,41 +192,44 @@ def start_conversion_job():
         job_state["Conversion"].update({"running": True, "status_text": "Conversion in progress..."})
         save_gui_state()
 
-        # Launch from atlas/ so the bare filename works
+        # Use a login shell so 'module' is available inside the script if needed.
+        # No args: the script handles paths itself.
         conversion_proc = subprocess.Popen(
-            cmd, cwd=atlas_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            ["/bin/bash", "-lc", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.abspath(os.getcwd())  # run from repo root; script is robust anyway
         )
-        # Begin polling for completion
+
         root.after(1500, check_conversion_status)
     except Exception as e:
         convert_status_label.config(text=f"Error starting conversion: {e}", fg="red")
         convert_run.config(state='normal')
 
+
 def check_conversion_status():
     """Consider conversion complete when CONVERT_OUT exists; otherwise handle failures."""
     global conversion_proc
 
-    # Success: output file appeared
+    # Success path: output file appeared
     if os.path.exists(CONVERT_OUT):
         convert_progress_bar.stop()
         convert_progress_bar['value'] = 100
         job_state["Conversion"].update({"running": False, "status_text": "Conversion complete!", "progress": 100})
         convert_status_label.config(text="Conversion complete!", fg="green")
-        convert_run.config(state='normal')  # allow re-run if desired
+        convert_run.config(state='normal')
         save_gui_state()
         return
 
-    # If process ended but no output, surface the error
+    # If process ended but no output, show error
     if conversion_proc is not None:
         rc = conversion_proc.poll()
         if rc is not None:
             out, err = conversion_proc.communicate()
             job_state["Conversion"].update({"running": False, "status_text": f"Conversion failed (code {rc})"})
             convert_progress_bar.stop()
-            convert_status_label.config(
-                text=f"Conversion failed (exit {rc}). See stderr in console.", fg="red"
-            )
-            # Print logs to terminal (keeps GUI lean)
+            convert_status_label.config(text=f"Conversion failed (exit {rc}). See stderr in console.", fg="red")
             if out: print("[convert stdout]\n", out)
             if err: print("[convert stderr]\n", err)
             convert_run.config(state='normal')
@@ -226,7 +237,7 @@ def check_conversion_status():
             return
 
     # Still running; poll again
-    root.after(1500, check_conversion_status)
+    root.after(CONVERT_POLL_MS, check_conversion_status)
 
 # --------------------------
 # Enable/Disable Run button based on readiness
@@ -491,35 +502,37 @@ def save_gui_state(stage=None):
         QC_status_label.config(text=f"Error saving GUI state: {e}", fg='red')
 
 
-def load_gui_state():
-    global job_state
-    if not os.path.exists(STATE_FILE):
-        return
-    try:
-        with open(STATE_FILE, "r") as f:
-            state = json.load(f)
-    except Exception as e:
-        QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
-        return
+for stage, info in job_state.items():
+    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
+    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
+    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
 
-    job_state = state.get("job_state", job_state)
+    # Always restore the last status text
+    label.config(text=info.get("status_text", label.cget("text")))
 
-    for stage, info in job_state.items():
-        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
-        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
-        # Fixed small typo from original: batch_correction_status_label name
-        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
-
-        label.config(text=info.get("status_text", label.cget("text")))
+    if stage == "Conversion":
+        # Do NOT auto-start the Convert progress bar.
+        # If a previous session marked it running, keep button disabled and just poll for completion.
         if info.get("running", False):
-            progress.start()
             button.config(state='disabled')
-            if info.get("job_id"):
-                root.after(200, lambda j=info.get("job_id"), s=stage: check_job_status(j, s))
+            # Resume polling BUT leave the bar idle until the user actually clicks Convert! in this session.
+            root.after(CONVERT_POLL_MS, check_conversion_status)
         elif info.get("progress") is not None:
             progress.stop()
             progress['value'] = info["progress"]
             button.config(state='normal')
+        continue  # skip the generic auto-start logic below
+
+    # Generic resume behavior for QC / Filtering / Batch Correction
+    if info.get("running", False):
+        progress.start()
+        button.config(state='disabled')
+        if info.get("job_id"):
+            root.after(200, lambda j=info.get("job_id"), s=stage: check_job_status(j, s))
+    elif info.get("progress") is not None:
+        progress.stop()
+        progress['value'] = info["progress"]
+        button.config(state='normal')
 
     # Auto-enable filtering if QC result file exists
     if os.path.exists("figures/QC_mito_pct.png"):
