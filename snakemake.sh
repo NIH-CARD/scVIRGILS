@@ -17,6 +17,7 @@ apptainer pull --disable-cache envs/single_cell_gpu.sif oras://quay.io/adamcatch
 apptainer pull --disable-cache envs/decoupler.sif oras://quay.io/adamcatchingdti/decoupler.sif:0.9
 apptainer pull --disable-cache envs/scenicplus.sif docker://litd/docker-scenicplus:latest 
 apptainer pull --disable-cache envs/single_cell_basic.sif oras://quay.io/ambertrujillo/single_cell_basic:1.2
+apptainer pull --disable-cache envs/r_container.sif oras://quay.io/ambertrujillo/r_container:1.2
 
 # Load singularity
 module load singularity/4.2.2
@@ -28,6 +29,7 @@ module load singularity/4.2.2
 chmod 777 scripts/rna_model.sh
 chmod 777 scripts/cellbender_array.sh
 chmod 777 scripts/rna_model_mnc.sh
+chmod 777 scripts/convert_h5ad_to_seurat.sh
 #chmod 777 scripts/atac_model.sh
 
 # RUN SCRIPT

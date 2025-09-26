@@ -170,19 +170,21 @@ def start_conversion_job():
     """Run the bash conversion script to turn h5ad -> h5seurat."""
     global conversion_proc
 
+    # Basic validations
     if not os.path.exists(CONVERT_IN):
         convert_status_label.config(text=f"Input not found: {CONVERT_IN}", fg="red")
         return
-
-    script_path = "/scripts/convert_h5ad_to_seurat.sh"
-    if not os.path.exists(script_path):
-        convert_status_label.config(text=f"Script not found: {script_path}", fg="red")
+    if not os.path.exists(CONVERT_SCRIPT):
+        convert_status_label.config(text=f"Script not found: {CONVERT_SCRIPT}", fg="red")
         return
-    if not os.access(script_path, os.X_OK):
+    if not os.access(CONVERT_SCRIPT, os.X_OK):
+        # Try to chmod +x (best-effort)
         try:
-            os.chmod(script_path, 0o755)
+            os.chmod(CONVERT_SCRIPT, 0o755)
         except Exception:
-            convert_status_label.config(text=f"Script not executable (chmod +x): {script_path}", fg="red")
+            convert_status_label.config(
+                text=f"Script is not executable (chmod +x needed): {CONVERT_SCRIPT}", fg="red"
+            )
             return
 
     try:
@@ -192,17 +194,16 @@ def start_conversion_job():
         job_state["Conversion"].update({"running": True, "status_text": "Conversion in progress..."})
         save_gui_state()
 
-        # Use a login shell so 'module' is available inside the script if needed.
-        # No args: the script handles paths itself.
+        # Call: /scripts/convert_h5ad_to_seurat.sh <input.h5ad> <output.h5seurat>
         conversion_proc = subprocess.Popen(
-            ["/bin/bash", "-lc", script_path],
+            ["/bin/bash", CONVERT_SCRIPT, CONVERT_IN, CONVERT_OUT],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            cwd=os.path.abspath(os.getcwd())  # run from repo root; script is robust anyway
+            text=True
         )
 
-        root.after(1500, check_conversion_status)
+        # Begin polling for completion
+        root.after(CONVERT_POLL_MS, check_conversion_status)
     except Exception as e:
         convert_status_label.config(text=f"Error starting conversion: {e}", fg="red")
         convert_run.config(state='normal')
@@ -502,54 +503,63 @@ def save_gui_state(stage=None):
         QC_status_label.config(text=f"Error saving GUI state: {e}", fg='red')
 
 
-for stage, info in job_state.items():
-    button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
-    progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
-    label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
+def load_gui_state():
+    global job_state
+    if not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE, "r") as f:
+            state = json.load(f)
+    except Exception as e:
+        QC_status_label.config(text=f"Error loading GUI state: {e}", fg='red')
+        return
 
-    # Always restore the last status text
-    label.config(text=info.get("status_text", label.cget("text")))
+    job_state = state.get("job_state", job_state)
 
-    if stage == "Conversion":
-        # Do NOT auto-start the Convert progress bar.
-        # If a previous session marked it running, keep button disabled and just poll for completion.
+    for stage, info in job_state.items():
+        button = QC_run if stage == "QC" else filter_run if stage == "Filtering" else batch_correction_run if stage == "Batch Correction" else convert_run
+        progress = QC_progressbar if stage == "QC" else filter_progressbar if stage == "Filtering" else batch_correction_progress_bar if stage == "Batch Correction" else convert_progress_bar
+        label = QC_status_label if stage == "QC" else filter_status_label if stage == "Filtering" else batch_correction_status_label if stage == "Batch Correction" else convert_status_label
+
+        # Restore last status text
+        label.config(text=info.get("status_text", label.cget("text")))
+
+        if stage == "Conversion":
+            # Do NOT auto-start the Convert progress bar.
+            if info.get("running", False):
+                button.config(state='disabled')
+                root.after(CONVERT_POLL_MS, check_conversion_status)  # resume polling only
+            elif info.get("progress") is not None:
+                progress.stop()
+                progress['value'] = info["progress"]
+                button.config(state='normal')
+            continue  # skip generic logic for Conversion
+
+        # Generic resume for QC / Filtering / Batch
         if info.get("running", False):
+            progress.start()
             button.config(state='disabled')
-            # Resume polling BUT leave the bar idle until the user actually clicks Convert! in this session.
-            root.after(CONVERT_POLL_MS, check_conversion_status)
+            if info.get("job_id"):
+                root.after(200, lambda j=info.get("job_id"), s=stage: check_job_status(j, s))
         elif info.get("progress") is not None:
             progress.stop()
             progress['value'] = info["progress"]
             button.config(state='normal')
-        continue  # skip the generic auto-start logic below
 
-    # Generic resume behavior for QC / Filtering / Batch Correction
-    if info.get("running", False):
-        progress.start()
-        button.config(state='disabled')
-        if info.get("job_id"):
-            root.after(200, lambda j=info.get("job_id"), s=stage: check_job_status(j, s))
-    elif info.get("progress") is not None:
-        progress.stop()
-        progress['value'] = info["progress"]
-        button.config(state='normal')
-
-    # Auto-enable filtering if QC result file exists
+    # Auto-enable Filtering if QC images exist
     if os.path.exists("figures/QC_mito_pct.png"):
         QC_status_label.config(text="QC complete (detected QC results).", fg="green")
-        next_process()  # enable QC view buttons
+        next_process()
         move_to_filtering.config(state='normal')
 
-    # Auto-enable batch_correction if final filtered merged anndata exists
+    # Auto-enable Batch Correction if filtered atlas exists
     if os.path.exists("atlas/02_filtered_anndata_rna.h5ad"):
         filter_status_label.config(text="Filtering complete (detected atlas).", fg="green")
         move_to_batch_correction.config(state='normal')
 
-    # Auto-enable convert if batch corrected data exists
-    # Auto-enable convert if modeled anndata exists
+    # Auto-enable Convert if modeled anndata exists
     if os.path.exists(CONVERT_IN):
         convert_status_label.config(text="Batch correction complete (detected atlas).", fg="green")
-        # Only enable if not currently running
         if not job_state["Conversion"].get("running", False):
             convert_run.config(state='normal')
 
