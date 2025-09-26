@@ -23,7 +23,7 @@ CONVERT_IN = os.path.join("atlas", "03_modeled_anndata_rna.h5ad")
 CONVERT_OUT = os.path.join("atlas", "03_modeled_anndata_rna.h5seurat")
 conversion_proc = None  # subprocess handle
 
-CONVERT_SCRIPT = "/scripts/convert_h5ad_to_seurat.sh"
+CONVERT_SCRIPT = "scripts/convert_h5ad_to_seurat.sh"
 CONVERT_POLL_MS = 1500
 
 qc_flags = {
