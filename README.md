@@ -15,7 +15,7 @@ The modules of Scanpy (https://github.com/scverse/scanpy) are utilized heavily t
 
 ### To get started
 
-##### If you are using the command line to launch this pipeline: 
+##### *If you are using the command line to launch this pipeline:* 
 
 Copy this repository to where you will be working with your data. This folder will be where output data is stored, while intermediary files will be stored in a separate folder to be defined by the user. It is important that the output of your CellRanger-ARC run has the format:`<data directory>/<Sample>/`!
 
