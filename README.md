@@ -21,7 +21,7 @@ Copy this repository to where you will be working with your data. This folder wi
 
 Depending on the step you want scVIRGILS to run through, alter `rule all` accordingly. 
 
-If you are using the GUI to launch this pipeline (Note: the GUI only completes through the integration step and allows for conversion of filtered and integrated anndata object to a seurat object.):
+##### *If you are using the GUI to launch this pipeline (Note: the GUI only completes through the integration step and allows for conversion of filtered and integrated anndata object to a seurat object.):*
 
 Copy this repository to where you will be working with your data. This folder will be where output data is stored, while intermediary files will be stored in a separate folder to be defined by the user. It is important that the output of your CellRanger-ARC run has the format:`<data directory>/<Sample>/`!
 
@@ -40,13 +40,13 @@ To launch `python scVIRGILS_gui.py` and enter the required fields.
 In addition, the `snakefile` requires modifications to fit your project. The top section "Parameter" should be modified for your dataset, include quality control values, where the input metadata and cell/cell gene marker files are stored. Input files should have their values match the parameters section.
 
 #### Outputs:
-If you are using the command line to launch this pipeline: 
+##### *If you are using the command line to launch this pipeline:* 
 
 - RNA atlas object (05_annotated_anndata_rna.h5ad)
 - List of differentially expressed genes and accessible regions (data/significant_genes/<rna>/<celltype_disease_DGE>.csv
 - Preprocessed and QC-filtered AnnData objects for each sample
 
-If you are using the GUI to launch this pipeline: 
+##### *If you are using the GUI to launch this pipeline:* 
 
 - RNA atlas object (03_modeled_anndata_rna.h5ad and 03_modeled_anndata_rna.h5seurat)
 - Preprocessed and QC-filtered AnnData objects for each sample
@@ -82,14 +82,14 @@ Each individual RNA AnnData object are merged into a single QC-filtered object f
 
 Filtered RNA samples are merged into an atlas and multidimensional scaling is performed. A copy of the atlas is made with mitochondiral and ribosomal transcripts removed and only the most variable genes kept. MNC is used to integrate the data, followed by KNN, leiden clustering, and UMAP scaling.
 
-### Cell-typing (rule annotate) - Only if launching with command line
+### Cell-typing (rule annotate) - *Only if launching with command line*
 
 Cell types of the modeled and clustered RNA atlas are estimated using over-representation analysis and a currated list of cell gene markers.
 
-### Separate atlas into individual celltypes (rule export_celltypes) - Only if launching with command line
+### Separate atlas into individual celltypes (rule export_celltypes) - *Only if launching with command line*
 
 Separate h5ad files for each cell type are extracted and saved.
 
-### DGE Analysis (rule DGE) - Only if launching with command line
+### DGE Analysis (rule DGE) - *Only if launching with command line*
 
 Each cell type pseudobulked and analyzed for differentially expressed genes. 
